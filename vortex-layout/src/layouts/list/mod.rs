@@ -6,15 +6,27 @@ mod reader;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use vortex_array::{ArrayContext, DeserializeMetadata, ProstMetadata};
-use vortex_dtype::{DType, Nullability};
-use vortex_error::{VortexExpect, VortexResult, vortex_bail, vortex_ensure, vortex_panic};
+use vortex_array::ArrayContext;
+use vortex_array::DeserializeMetadata;
+use vortex_array::ProstMetadata;
+use vortex_dtype::DType;
+use vortex_dtype::Nullability;
+use vortex_error::VortexExpect;
+use vortex_error::VortexResult;
+use vortex_error::vortex_bail;
+use vortex_error::vortex_ensure;
+use vortex_error::vortex_panic;
 
-use crate::segments::{SegmentId, SegmentSource};
-use crate::{
-    LayoutChildType, LayoutChildren, LayoutEncodingRef, LayoutId, LayoutReaderRef, LayoutRef,
-    VTable, vtable,
-};
+use crate::LayoutChildType;
+use crate::LayoutChildren;
+use crate::LayoutEncodingRef;
+use crate::LayoutId;
+use crate::LayoutReaderRef;
+use crate::LayoutRef;
+use crate::VTable;
+use crate::segments::SegmentId;
+use crate::segments::SegmentSource;
+use crate::vtable;
 
 /// Variants of lists writable as a `vortex.list` layout.
 #[derive(Clone, Debug)]
