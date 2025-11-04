@@ -5,9 +5,9 @@ use std::any::Any;
 use std::fmt::Formatter;
 use std::sync::{Arc, Weak};
 
-use arrow_schema::SchemaRef;
 use datafusion_common::config::ConfigOptions;
 use datafusion_common::{Result as DFResult, Statistics};
+use datafusion_datasource::TableSchema;
 use datafusion_datasource::file::FileSource;
 use datafusion_datasource::file_scan_config::FileScanConfig;
 use datafusion_datasource::file_stream::FileOpener;
@@ -51,8 +51,7 @@ pub struct VortexSource {
     pub(crate) vortex_predicate: Option<PhysicalExprRef>,
     pub(crate) batch_size: Option<usize>,
     pub(crate) projected_statistics: Option<Statistics>,
-    /// This is the file schema the table expects, which is the table's schema without partition columns, and **not** the file's physical schema.
-    pub(crate) arrow_file_schema: Option<SchemaRef>,
+    pub(crate) table_schema: Option<TableSchema>,
     pub(crate) schema_adapter_factory: Option<Arc<dyn SchemaAdapterFactory>>,
     pub(crate) expr_adapter_factory: Option<Arc<dyn PhysicalExprAdapterFactory>>,
     _unused_df_metrics: ExecutionPlanMetricsSet,
@@ -71,7 +70,7 @@ impl VortexSource {
             vortex_predicate: None,
             batch_size: None,
             projected_statistics: None,
-            arrow_file_schema: None,
+            table_schema: None,
             schema_adapter_factory: None,
             expr_adapter_factory: None,
             _unused_df_metrics: Default::default(),
@@ -136,6 +135,8 @@ impl FileSource for VortexSource {
 
         let projection = base_config.file_column_projection_indices().map(Arc::from);
 
+        let table_schema = base_config.file_schema.clone();
+
         let opener = VortexOpener {
             session: self.session.clone(),
             object_store,
@@ -144,8 +145,7 @@ impl FileSource for VortexSource {
             file_pruning_predicate: self.full_predicate.clone(),
             expr_adapter_factory,
             schema_adapter_factory,
-            partition_fields: base_config.table_partition_cols.clone(),
-            logical_schema: base_config.file_schema.clone(),
+            table_schema,
             file_cache: self.file_cache.clone(),
             batch_size,
             limit: base_config.limit,
@@ -167,9 +167,9 @@ impl FileSource for VortexSource {
         Arc::new(source)
     }
 
-    fn with_schema(&self, schema: SchemaRef) -> Arc<dyn FileSource> {
+    fn with_schema(&self, schema: TableSchema) -> Arc<dyn FileSource> {
         let mut source = self.clone();
-        source.arrow_file_schema = Some(schema);
+        source.table_schema = Some(schema);
         Arc::new(source)
     }
 
@@ -236,7 +236,7 @@ impl FileSource for VortexSource {
             ));
         }
 
-        let Some(schema) = self.arrow_file_schema.as_ref() else {
+        let Some(table_schema) = self.table_schema.as_ref() else {
             return Ok(FilterPushdownPropagation::with_parent_pushdown_result(
                 vec![PushedDown::No; filters.len()],
             ));
@@ -256,7 +256,7 @@ impl FileSource for VortexSource {
         let supported_filters = filters
             .into_iter()
             .map(|expr| {
-                if can_be_pushed_down(&expr, schema) {
+                if can_be_pushed_down(&expr, table_schema.file_schema()) {
                     PushedDownPredicate::supported(expr)
                 } else {
                     PushedDownPredicate::unsupported(expr)
