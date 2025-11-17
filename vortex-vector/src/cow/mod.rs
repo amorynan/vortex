@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+mod bit_buffer;
+mod buffer;
+mod mask;
+
 use std::fmt;
 
 /// A trait defining an immutable type that can be converted into a mutable counterpart.
@@ -52,12 +56,45 @@ where
         matches!(self, Cow::Mutable(_))
     }
 
+    /// Acquires a reference to the frozen form of the data.
+    ///
+    /// This will freeze the data if it was not yet frozen.
+    ///
+    /// We return a mutable reference for flexibility, but since `F` should be an immutable data
+    /// type, it should always be reborrowed as an immutable reference.
+    #[inline]
+    pub fn to_frozen(&mut self) -> &mut F {
+        match self {
+            Cow::Frozen(frozen) => frozen,
+            Cow::Mutable(mutable) => {
+                // TODO(connor): We can do some unsafe magic here to avoid the clone.
+                *self = Cow::Frozen(mutable.clone().freeze());
+                match self {
+                    Cow::Frozen(frozen) => frozen,
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
+
+    /// Extracts the frozen data.
+    ///
+    /// This will freeze the data if it was not yet frozen.
+    pub fn freeze(self) -> F {
+        match self {
+            Cow::Frozen(frozen) => frozen,
+            Cow::Mutable(mutable) => mutable.freeze(),
+        }
+    }
+
     /// Acquires a mutable reference to the mutable form of the data.
     ///
     /// Performs a deep clone of the data if it is not already mutable.
+    #[inline]
     pub fn to_mut(&mut self) -> &mut <F as IntoMut>::Mutable {
         match self {
             Cow::Frozen(frozen) => {
+                // TODO(connor): We can do some unsafe magic here to avoid the clone.
                 *self = Cow::Mutable(frozen.clone().into_mut());
                 match self {
                     Cow::Mutable(mutable) => mutable,
@@ -71,7 +108,7 @@ where
     /// Extracts the mutable data.
     ///
     /// Performs a deep clone of the data if it is not already mutable.
-    pub fn into_mutable(self) -> <F as IntoMut>::Mutable {
+    pub fn into_mut(self) -> <F as IntoMut>::Mutable {
         match self {
             Cow::Frozen(frozen) => frozen.into_mut(),
             Cow::Mutable(mutable) => mutable,
