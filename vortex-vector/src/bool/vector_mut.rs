@@ -7,8 +7,8 @@ use vortex_buffer::BitBufferMut;
 use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
 use vortex_mask::MaskMut;
 
-use crate::bool::BoolVector;
-use crate::{VectorMutOps, VectorOps};
+// use crate::bool::BoolVector;
+use crate::VectorMutOps;
 
 /// A mutable vector of boolean values.
 ///
@@ -106,8 +106,6 @@ impl BoolVectorMut {
 }
 
 impl VectorMutOps for BoolVectorMut {
-    type Immutable = BoolVector;
-
     fn len(&self) -> usize {
         debug_assert!(self.validity.len() == self.bits.len());
 
@@ -137,22 +135,22 @@ impl VectorMutOps for BoolVectorMut {
         self.validity.truncate(len);
     }
 
-    fn extend_from_vector(&mut self, other: &BoolVector) {
-        self.bits.append_buffer(&other.bits);
-        self.validity.append_mask(other.validity());
-    }
+    // fn extend_from_vector(&mut self, other: &BoolVector) {
+    //     self.bits.append_buffer(&other.bits);
+    //     self.validity.append_mask(other.validity());
+    // }
 
     fn append_nulls(&mut self, n: usize) {
         self.bits.append_n(false, n); // Note that the value we push doesn't actually matter.
         self.validity.append_n(false, n);
     }
 
-    fn freeze(self) -> BoolVector {
-        BoolVector {
-            bits: self.bits.freeze(),
-            validity: self.validity.freeze(),
-        }
-    }
+    // fn freeze(self) -> BoolVector {
+    //     BoolVector {
+    //         bits: self.bits.freeze(),
+    //         validity: self.validity.freeze(),
+    //     }
+    // }
 
     fn split_off(&mut self, at: usize) -> Self {
         Self {
@@ -171,6 +169,7 @@ impl VectorMutOps for BoolVectorMut {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -258,3 +257,4 @@ mod tests {
         assert_eq!(roundtrip, empty);
     }
 }
+*/

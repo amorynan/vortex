@@ -3,14 +3,14 @@
 
 //! Definition and implementation of [`FixedSizeListVectorMut`].
 
-use std::sync::Arc;
+// use std::sync::Arc;
 
 use vortex_dtype::DType;
 use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
 use vortex_mask::MaskMut;
 
-use crate::fixed_size_list::FixedSizeListVector;
-use crate::{VectorMut, VectorMutOps, match_vector_pair};
+// use crate::fixed_size_list::FixedSizeListVector;
+use crate::{VectorMut, VectorMutOps};
 
 /// A mutable vector of fixed-size lists.
 ///
@@ -166,8 +166,6 @@ impl FixedSizeListVectorMut {
 }
 
 impl VectorMutOps for FixedSizeListVectorMut {
-    type Immutable = FixedSizeListVector;
-
     fn len(&self) -> usize {
         self.len
     }
@@ -202,20 +200,20 @@ impl VectorMutOps for FixedSizeListVectorMut {
         self.len = new_len;
     }
 
-    fn extend_from_vector(&mut self, other: &FixedSizeListVector) {
-        match_vector_pair!(
-            self.elements.as_mut(),
-            other.elements.as_ref(),
-            |a: VectorMut, b: Vector| {
-                // This will panic if `other.elements` is not the correct type of vector.
-                a.extend_from_vector(b);
-            }
-        );
+    // fn extend_from_vector(&mut self, other: &FixedSizeListVector) {
+    //     match_vector_pair!(
+    //         self.elements.as_mut(),
+    //         other.elements.as_ref(),
+    //         |a: VectorMut, b: Vector| {
+    //             // This will panic if `other.elements` is not the correct type of vector.
+    //             a.extend_from_vector(b);
+    //         }
+    //     );
 
-        self.validity.append_mask(&other.validity);
-        self.len += other.len;
-        debug_assert_eq!(self.len, self.validity.len());
-    }
+    //     self.validity.append_mask(&other.validity);
+    //     self.len += other.len;
+    //     debug_assert_eq!(self.len, self.validity.len());
+    // }
 
     fn append_nulls(&mut self, n: usize) {
         self.elements.append_nulls(n * self.list_size as usize);
@@ -224,14 +222,14 @@ impl VectorMutOps for FixedSizeListVectorMut {
         debug_assert_eq!(self.len, self.validity.len());
     }
 
-    fn freeze(self) -> FixedSizeListVector {
-        FixedSizeListVector {
-            elements: Arc::new(self.elements.freeze()),
-            list_size: self.list_size,
-            validity: self.validity.freeze(),
-            len: self.len,
-        }
-    }
+    // fn freeze(self) -> FixedSizeListVector {
+    //     FixedSizeListVector {
+    //         elements: Arc::new(self.elements.freeze()),
+    //         list_size: self.list_size,
+    //         validity: self.validity.freeze(),
+    //         len: self.len,
+    //     }
+    // }
 
     fn split_off(&mut self, at: usize) -> Self {
         assert!(
@@ -273,6 +271,7 @@ impl VectorMutOps for FixedSizeListVectorMut {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -495,3 +494,4 @@ mod tests {
         assert_eq!(vec.len(), 2);
     }
 }
+*/

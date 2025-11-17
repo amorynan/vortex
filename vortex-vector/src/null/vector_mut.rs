@@ -6,7 +6,7 @@
 use vortex_mask::MaskMut;
 
 use crate::VectorMutOps;
-use crate::null::NullVector;
+// use crate::null::NullVector;
 
 /// A mutable vector of null values.
 ///
@@ -34,8 +34,6 @@ impl NullVectorMut {
 }
 
 impl VectorMutOps for NullVectorMut {
-    type Immutable = NullVector;
-
     fn len(&self) -> usize {
         self.len
     }
@@ -60,17 +58,17 @@ impl VectorMutOps for NullVectorMut {
         self.len = self.len.min(len);
     }
 
-    fn extend_from_vector(&mut self, other: &NullVector) {
-        self.len += other.len;
-    }
+    // fn extend_from_vector(&mut self, other: &NullVector) {
+    //     self.len += other.len;
+    // }
 
     fn append_nulls(&mut self, n: usize) {
         self.len += n;
     }
 
-    fn freeze(self) -> NullVector {
-        NullVector::new(self.len)
-    }
+    // fn freeze(self) -> NullVector {
+    //     NullVector::new(self.len)
+    // }
 
     fn split_off(&mut self, at: usize) -> Self {
         assert!(

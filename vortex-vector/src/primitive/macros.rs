@@ -7,6 +7,7 @@
 //! [`PrimitiveVector`]: crate::primitive::PrimitiveVector
 //! [`PrimitiveVectorMut`]: crate::primitive::PrimitiveVectorMut
 
+/*
 /// Matches on all primitive type variants of [`PrimitiveVector`] and executes the same code for
 /// each variant branch.
 ///
@@ -96,6 +97,7 @@ macro_rules! match_each_integer_pvector {
         }
     }};
 }
+*/
 
 /// Matches on all primitive type variants of [`PrimitiveVectorMut`] and executes the same code
 /// for each variant branch.

@@ -54,24 +54,24 @@
 //! assert_eq!(immutable.len(), 3);
 //! ```
 
-mod vector;
-pub use vector::BoolVector;
+// mod vector;
+// pub use vector::BoolVector;
 
 mod vector_mut;
 pub use vector_mut::BoolVectorMut;
 
-mod scalar;
-pub use scalar::BoolScalar;
+// mod scalar;
+// pub use scalar::BoolScalar;
 
 mod iter;
 
-use crate::{Vector, VectorMut};
+use crate::VectorMut;
 
-impl From<BoolVector> for Vector {
-    fn from(v: BoolVector) -> Self {
-        Self::Bool(v)
-    }
-}
+// impl From<BoolVector> for Vector {
+//     fn from(v: BoolVector) -> Self {
+//         Self::Bool(v)
+//     }
+// }
 
 impl From<BoolVectorMut> for VectorMut {
     fn from(v: BoolVectorMut) -> Self {

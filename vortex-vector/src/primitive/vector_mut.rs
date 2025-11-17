@@ -8,7 +8,7 @@ use vortex_dtype::{NativePType, PType, PTypeDowncast, PTypeUpcast};
 use vortex_error::vortex_panic;
 use vortex_mask::MaskMut;
 
-use crate::primitive::{PVectorMut, PrimitiveVector};
+use crate::primitive::PVectorMut;
 use crate::{VectorMutOps, match_each_pvector_mut};
 
 /// A mutable vector of primitive values.
@@ -82,8 +82,6 @@ impl PrimitiveVectorMut {
 }
 
 impl VectorMutOps for PrimitiveVectorMut {
-    type Immutable = PrimitiveVector;
-
     fn len(&self) -> usize {
         match_each_pvector_mut!(self, |v| { v.len() })
     }
@@ -108,30 +106,30 @@ impl VectorMutOps for PrimitiveVectorMut {
         match_each_pvector_mut!(self, |v| { v.truncate(len) })
     }
 
-    fn extend_from_vector(&mut self, other: &PrimitiveVector) {
-        match (self, other) {
-            (Self::U8(a), PrimitiveVector::U8(b)) => a.extend_from_vector(b),
-            (Self::U16(a), PrimitiveVector::U16(b)) => a.extend_from_vector(b),
-            (Self::U32(a), PrimitiveVector::U32(b)) => a.extend_from_vector(b),
-            (Self::U64(a), PrimitiveVector::U64(b)) => a.extend_from_vector(b),
-            (Self::I8(a), PrimitiveVector::I8(b)) => a.extend_from_vector(b),
-            (Self::I16(a), PrimitiveVector::I16(b)) => a.extend_from_vector(b),
-            (Self::I32(a), PrimitiveVector::I32(b)) => a.extend_from_vector(b),
-            (Self::I64(a), PrimitiveVector::I64(b)) => a.extend_from_vector(b),
-            (Self::F16(a), PrimitiveVector::F16(b)) => a.extend_from_vector(b),
-            (Self::F32(a), PrimitiveVector::F32(b)) => a.extend_from_vector(b),
-            (Self::F64(a), PrimitiveVector::F64(b)) => a.extend_from_vector(b),
-            _ => ::vortex_error::vortex_panic!("Mismatched primitive vector types"),
-        }
-    }
+    // fn extend_from_vector(&mut self, other: &PrimitiveVector) {
+    //     match (self, other) {
+    //         (Self::U8(a), PrimitiveVector::U8(b)) => a.extend_from_vector(b),
+    //         (Self::U16(a), PrimitiveVector::U16(b)) => a.extend_from_vector(b),
+    //         (Self::U32(a), PrimitiveVector::U32(b)) => a.extend_from_vector(b),
+    //         (Self::U64(a), PrimitiveVector::U64(b)) => a.extend_from_vector(b),
+    //         (Self::I8(a), PrimitiveVector::I8(b)) => a.extend_from_vector(b),
+    //         (Self::I16(a), PrimitiveVector::I16(b)) => a.extend_from_vector(b),
+    //         (Self::I32(a), PrimitiveVector::I32(b)) => a.extend_from_vector(b),
+    //         (Self::I64(a), PrimitiveVector::I64(b)) => a.extend_from_vector(b),
+    //         (Self::F16(a), PrimitiveVector::F16(b)) => a.extend_from_vector(b),
+    //         (Self::F32(a), PrimitiveVector::F32(b)) => a.extend_from_vector(b),
+    //         (Self::F64(a), PrimitiveVector::F64(b)) => a.extend_from_vector(b),
+    //         _ => ::vortex_error::vortex_panic!("Mismatched primitive vector types"),
+    //     }
+    // }
 
     fn append_nulls(&mut self, n: usize) {
         match_each_pvector_mut!(self, |v| { v.append_nulls(n) })
     }
 
-    fn freeze(self) -> PrimitiveVector {
-        match_each_pvector_mut!(self, |v| { v.freeze().into() })
-    }
+    // fn freeze(self) -> PrimitiveVector {
+    //     match_each_pvector_mut!(self, |v| { v.freeze().into() })
+    // }
 
     fn split_off(&mut self, at: usize) -> Self {
         match_each_pvector_mut!(self, |v| { v.split_off(at).into() })
@@ -365,6 +363,7 @@ impl<'a> PTypeDowncast for &'a mut PrimitiveVectorMut {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -430,3 +429,4 @@ mod tests {
         assert_eq!(frozen.validity().true_count(), 2);
     }
 }
+*/

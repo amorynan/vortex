@@ -18,7 +18,7 @@ use crate::listview::ListViewVectorMut;
 use crate::null::NullVectorMut;
 use crate::primitive::PrimitiveVectorMut;
 use crate::struct_::StructVectorMut;
-use crate::{Vector, VectorMutOps, match_each_vector_mut, match_vector_pair};
+use crate::{VectorMutOps, match_each_vector_mut, match_vector_pair};
 
 /// An enum over all kinds of mutable vectors, which represent fully decompressed (canonical) array
 /// data.
@@ -88,8 +88,6 @@ impl VectorMut {
 }
 
 impl VectorMutOps for VectorMut {
-    type Immutable = Vector;
-
     fn len(&self) -> usize {
         match_each_vector_mut!(self, |v| { v.len() })
     }
@@ -114,19 +112,19 @@ impl VectorMutOps for VectorMut {
         match_each_vector_mut!(self, |v| { v.truncate(len) })
     }
 
-    fn extend_from_vector(&mut self, other: &Vector) {
-        match_vector_pair!(self, other, |a: VectorMut, b: Vector| {
-            a.extend_from_vector(b)
-        })
-    }
+    // fn extend_from_vector(&mut self, other: &Vector) {
+    //     match_vector_pair!(self, other, |a: VectorMut, b: Vector| {
+    //         a.extend_from_vector(b)
+    //     })
+    // }
 
     fn append_nulls(&mut self, n: usize) {
         match_each_vector_mut!(self, |v| { v.append_nulls(n) })
     }
 
-    fn freeze(self) -> Vector {
-        match_each_vector_mut!(self, |v| { v.freeze().into() })
-    }
+    // fn freeze(self) -> Vector {
+    //     match_each_vector_mut!(self, |v| { v.freeze().into() })
+    // }
 
     fn split_off(&mut self, at: usize) -> Self {
         match_each_vector_mut!(self, |v| { v.split_off(at).into() })
@@ -270,6 +268,7 @@ impl VectorMut {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use vortex_dtype::{DecimalDType, Nullability, PType};
@@ -466,3 +465,4 @@ mod tests {
         assert_eq!(frozen.validity().true_count(), 6);
     }
 }
+*/

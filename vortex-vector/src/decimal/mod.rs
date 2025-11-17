@@ -139,44 +139,44 @@
 //! // assert_eq!(vec_mut_again.len(), 3);
 //! ```
 
-mod generic;
-pub use generic::DVector;
+// mod generic;
+// pub use generic::DVector;
 
 mod generic_mut;
 pub use generic_mut::DVectorMut;
 
-mod vector;
-pub use vector::DecimalVector;
+// mod vector;
+// pub use vector::DecimalVector;
 
 mod vector_mut;
 pub use vector_mut::DecimalVectorMut;
 
-mod scalar;
-pub use scalar::{DScalar, DecimalScalar};
+// mod scalar;
+// pub use scalar::{DScalar, DecimalScalar};
 
 mod macros;
 
 use vortex_dtype::NativeDecimalType;
 
-use crate::{Vector, VectorMut};
+use crate::VectorMut;
 
-impl From<DecimalVector> for Vector {
-    fn from(v: DecimalVector) -> Self {
-        Self::Decimal(v)
-    }
-}
+// impl From<DecimalVector> for Vector {
+//     fn from(v: DecimalVector) -> Self {
+//         Self::Decimal(v)
+//     }
+// }
 
-impl<D: NativeDecimalType> From<DVector<D>> for DecimalVector {
-    fn from(value: DVector<D>) -> Self {
-        D::upcast(value)
-    }
-}
+// impl<D: NativeDecimalType> From<DVector<D>> for DecimalVector {
+//     fn from(value: DVector<D>) -> Self {
+//         D::upcast(value)
+//     }
+// }
 
-impl<D: NativeDecimalType> From<DVector<D>> for Vector {
-    fn from(v: DVector<D>) -> Self {
-        Self::Decimal(DecimalVector::from(v))
-    }
-}
+// impl<D: NativeDecimalType> From<DVector<D>> for Vector {
+//     fn from(v: DVector<D>) -> Self {
+//         Self::Decimal(DecimalVector::from(v))
+//     }
+// }
 
 impl From<DecimalVectorMut> for VectorMut {
     fn from(v: DecimalVectorMut) -> Self {

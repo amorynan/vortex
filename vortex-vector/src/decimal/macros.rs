@@ -7,6 +7,7 @@
 //! [`DecimalVector`]: super::DecimalVector
 //! [`DecimalVectorMut`]: super::DecimalVectorMut
 
+/*
 /// Matches on all decimal type variants of [`DecimalVector`] and executes the same code for
 /// each variant branch.
 ///
@@ -27,6 +28,7 @@ macro_rules! match_each_dvector {
         }
     }};
 }
+*/
 
 /// Matches on all decimal type variants of [`DecimalVectorMut`] and executes the same code
 /// for each variant branch.

@@ -19,25 +19,27 @@ pub mod null;
 pub mod primitive;
 pub mod struct_;
 
-mod datum;
-mod scalar;
-mod scalar_ops;
-mod vector;
+// mod datum;
+// mod scalar;
+// mod scalar_ops;
+
+// mod vector;
 mod vector_mut;
 mod vector_ops;
 
-pub use datum::Datum;
-pub use scalar::Scalar;
-pub use scalar_ops::ScalarOps;
-pub use vector::Vector;
-pub use vector_mut::VectorMut;
-pub use vector_ops::{VectorMutOps, VectorOps};
-use vortex_dtype::DType;
-
 mod macros;
-mod private;
-mod scalar_macros;
+// mod private;
+// mod scalar_macros;
 
+// pub use datum::Datum;
+// pub use scalar::Scalar;
+// pub use scalar_ops::ScalarOps;
+// pub use vector::Vector;
+pub use vector_mut::VectorMut;
+pub use vector_ops::VectorMutOps;
+// use vortex_dtype::DType;
+
+/*
 /// Returns true if the vector's is compatible with the provided data type.
 ///
 /// This means that the vector's physical representation is compatible with the data type,
@@ -106,3 +108,4 @@ pub fn vector_matches_dtype(vector: &Vector, dtype: &DType) -> bool {
         }
     }
 }
+*/

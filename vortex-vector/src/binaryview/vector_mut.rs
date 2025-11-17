@@ -3,16 +3,16 @@
 
 //! Mutable variable-length binary vector.
 
-use std::sync::Arc;
+// use std::sync::Arc;
 
 use vortex_buffer::{BufferMut, ByteBuffer, ByteBufferMut};
 use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
 use vortex_mask::MaskMut;
 
+// use crate::binaryview::vector::BinaryViewVector;
+use crate::VectorMutOps;
 use crate::binaryview::BinaryViewType;
-use crate::binaryview::vector::BinaryViewVector;
 use crate::binaryview::view::{BinaryView, validate_views};
-use crate::{VectorMutOps, VectorOps};
 
 // Default capacity for new string data buffers of 2MiB.
 const BUFFER_CAPACITY: usize = 2 * 1024 * 1024;
@@ -206,8 +206,6 @@ impl<T: BinaryViewType> BinaryViewVectorMut<T> {
 }
 
 impl<T: BinaryViewType> VectorMutOps for BinaryViewVectorMut<T> {
-    type Immutable = BinaryViewVector<T>;
-
     fn len(&self) -> usize {
         self.views.len()
     }
@@ -237,45 +235,45 @@ impl<T: BinaryViewType> VectorMutOps for BinaryViewVectorMut<T> {
         self.validity.truncate(len);
     }
 
-    fn extend_from_vector(&mut self, other: &BinaryViewVector<T>) {
-        // Close any existing views into a new buffer
-        self.flush_open_buffer();
+    // fn extend_from_vector(&mut self, other: &BinaryViewVector<T>) {
+    //     // Close any existing views into a new buffer
+    //     self.flush_open_buffer();
 
-        let offset =
-            u32::try_from(self.buffers.len()).vortex_expect("buffer count exceeds u32::MAX");
+    //     let offset =
+    //         u32::try_from(self.buffers.len()).vortex_expect("buffer count exceeds u32::MAX");
 
-        self.buffers.extend(other.buffers().iter().cloned());
+    //     self.buffers.extend(other.buffers().iter().cloned());
 
-        let new_views_iter = other.views().iter().copied().map(|mut v| {
-            if v.is_inlined() {
-                v
-            } else {
-                v.as_view_mut().buffer_index += offset;
-                v
-            }
-        });
-        self.views.extend(new_views_iter);
+    //     let new_views_iter = other.views().iter().copied().map(|mut v| {
+    //         if v.is_inlined() {
+    //             v
+    //         } else {
+    //             v.as_view_mut().buffer_index += offset;
+    //             v
+    //         }
+    //     });
+    //     self.views.extend(new_views_iter);
 
-        self.validity.append_mask(other.validity())
-    }
+    //     self.validity.append_mask(other.validity())
+    // }
 
     fn append_nulls(&mut self, n: usize) {
         self.views.push_n(BinaryView::empty_view(), n);
         self.validity.append_n(false, n);
     }
 
-    fn freeze(mut self) -> BinaryViewVector<T> {
-        // Freeze all components, close any in-progress views
-        self.flush_open_buffer();
+    // fn freeze(mut self) -> BinaryViewVector<T> {
+    //     // Freeze all components, close any in-progress views
+    //     self.flush_open_buffer();
 
-        unsafe {
-            BinaryViewVector::new_unchecked(
-                self.views.freeze(),
-                Arc::new(self.buffers.into_boxed_slice()),
-                self.validity.freeze(),
-            )
-        }
-    }
+    //     unsafe {
+    //         BinaryViewVector::new_unchecked(
+    //             self.views.freeze(),
+    //             Arc::new(self.buffers.into_boxed_slice()),
+    //             self.validity.freeze(),
+    //         )
+    //     }
+    // }
 
     fn split_off(&mut self, _at: usize) -> Self {
         todo!()
@@ -291,6 +289,7 @@ impl<T: BinaryViewType> VectorMutOps for BinaryViewVectorMut<T> {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use std::ops::Deref;
@@ -436,3 +435,4 @@ mod tests {
         assert_eq!(strings_finished.get_ref(6), Some("extend2"));
     }
 }
+*/

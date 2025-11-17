@@ -3,16 +3,16 @@
 
 //! Definition and implementation of [`ListViewVectorMut`].
 
-use std::sync::Arc;
+// use std::sync::Arc;
 
 use vortex_dtype::{DType, PType};
 use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
 use vortex_mask::MaskMut;
 
-use super::ListViewVector;
-use crate::primitive::{PrimitiveVector, PrimitiveVectorMut};
+// use super::ListViewVector;
+use crate::primitive::PrimitiveVectorMut;
 use crate::vector_ops::VectorMutOps;
-use crate::{VectorMut, VectorOps, match_each_integer_pvector, match_each_integer_pvector_mut};
+use crate::{VectorMut, match_each_integer_pvector_mut};
 
 /// A mutable vector of variable-width lists.
 ///
@@ -250,8 +250,6 @@ impl ListViewVectorMut {
 }
 
 impl VectorMutOps for ListViewVectorMut {
-    type Immutable = ListViewVector;
-
     fn len(&self) -> usize {
         self.len
     }
@@ -291,31 +289,31 @@ impl VectorMutOps for ListViewVectorMut {
         self.len = self.validity.len();
     }
 
-    /// This will also panic if we try to extend the `ListViewVector` beyond the maximum offset
-    /// representable by the type of the `offsets` primitive vector.
-    fn extend_from_vector(&mut self, other: &ListViewVector) {
-        // Extend the elements with the other's elements.
-        let old_elements_len = self.elements.len() as u64;
-        self.elements.extend_from_vector(&other.elements);
-        let new_elements_len = self.elements.len() as u64;
+    // /// This will also panic if we try to extend the `ListViewVector` beyond the maximum offset
+    // /// representable by the type of the `offsets` primitive vector.
+    // fn extend_from_vector(&mut self, other: &ListViewVector) {
+    //     // Extend the elements with the other's elements.
+    //     let old_elements_len = self.elements.len() as u64;
+    //     self.elements.extend_from_vector(&other.elements);
+    //     let new_elements_len = self.elements.len() as u64;
 
-        // Then extend the sizes with the other's sizes (these do not need any adjustment).
-        self.sizes.extend_from_vector(&other.sizes);
+    //     // Then extend the sizes with the other's sizes (these do not need any adjustment).
+    //     self.sizes.extend_from_vector(&other.sizes);
 
-        // We need this assertion to ensure that the casts below are infallible.
-        assert!(
-            new_elements_len < self.offsets.ptype().max_value_as_u64(),
-            "the elements length {new_elements_len} is not representable by the offsets type {}",
-            self.offsets.ptype()
-        );
+    //     // We need this assertion to ensure that the casts below are infallible.
+    //     assert!(
+    //         new_elements_len < self.offsets.ptype().max_value_as_u64(),
+    //         "the elements length {new_elements_len} is not representable by the offsets type {}",
+    //         self.offsets.ptype()
+    //     );
 
-        // Finally, extend the offsets after adding the old `elements` length to each.
-        adjust_and_extend_offsets(&mut self.offsets, &other.offsets, old_elements_len);
+    //     // Finally, extend the offsets after adding the old `elements` length to each.
+    //     adjust_and_extend_offsets(&mut self.offsets, &other.offsets, old_elements_len);
 
-        self.validity.append_mask(&other.validity);
-        self.len += other.len;
-        debug_assert_eq!(self.len, self.validity.len());
-    }
+    //     self.validity.append_mask(&other.validity);
+    //     self.len += other.len;
+    //     debug_assert_eq!(self.len, self.validity.len());
+    // }
 
     fn append_nulls(&mut self, n: usize) {
         // To support easier copying to Arrow `List`s, we point the null views towards the ends of
@@ -359,15 +357,15 @@ impl VectorMutOps for ListViewVectorMut {
         debug_assert_eq!(self.len, self.validity.len());
     }
 
-    fn freeze(self) -> ListViewVector {
-        ListViewVector {
-            offsets: self.offsets.freeze(),
-            sizes: self.sizes.freeze(),
-            elements: Arc::new(self.elements.freeze()),
-            validity: self.validity.freeze(),
-            len: self.len,
-        }
-    }
+    // fn freeze(self) -> ListViewVector {
+    //     ListViewVector {
+    //         offsets: self.offsets.freeze(),
+    //         sizes: self.sizes.freeze(),
+    //         elements: Arc::new(self.elements.freeze()),
+    //         validity: self.validity.freeze(),
+    //         len: self.len,
+    //     }
+    // }
 
     fn split_off(&mut self, _at: usize) -> Self {
         todo!()
@@ -410,6 +408,7 @@ fn validate_views_bound(
     Ok(())
 }
 
+/*
 // TODO(connor): It would be better to separate everything inside the macros into its own function,
 // but that would require adding another macro that sets a type `$type` to be used by the caller.
 /// Checks that all views are `<= elements_len`.
@@ -445,3 +444,4 @@ fn adjust_and_extend_offsets(
         });
     });
 }
+*/

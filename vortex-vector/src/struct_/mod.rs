@@ -89,23 +89,21 @@
 //! }
 //! ```
 
-mod vector;
-pub use vector::StructVector;
+// mod vector;
+// pub use vector::StructVector;
 
 mod vector_mut;
 pub use vector_mut::StructVectorMut;
 
-mod scalar;
+// mod scalar;
+// pub use scalar::StructScalar;
+use crate::VectorMut;
 
-pub use scalar::StructScalar;
-
-use crate::{Vector, VectorMut};
-
-impl From<StructVector> for Vector {
-    fn from(v: StructVector) -> Self {
-        Self::Struct(v)
-    }
-}
+// impl From<StructVector> for Vector {
+//     fn from(v: StructVector) -> Self {
+//         Self::Struct(v)
+//     }
+// }
 
 impl From<StructVectorMut> for VectorMut {
     fn from(v: StructVectorMut) -> Self {

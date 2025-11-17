@@ -8,8 +8,8 @@ use vortex_dtype::NativePType;
 use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
 use vortex_mask::MaskMut;
 
-use crate::primitive::PVector;
-use crate::{VectorMutOps, VectorOps};
+// use crate::primitive::PVector;
+use crate::VectorMutOps;
 
 /// A mutable vector of generic primitive values.
 ///
@@ -124,8 +124,6 @@ impl<T> PVectorMut<T> {
 }
 
 impl<T: NativePType> VectorMutOps for PVectorMut<T> {
-    type Immutable = PVector<T>;
-
     fn len(&self) -> usize {
         self.elements.len()
     }
@@ -153,24 +151,24 @@ impl<T: NativePType> VectorMutOps for PVectorMut<T> {
         self.validity.truncate(len);
     }
 
-    /// Extends the vector by appending elements from another vector.
-    fn extend_from_vector(&mut self, other: &PVector<T>) {
-        self.elements.extend_from_slice(other.elements.as_slice());
-        self.validity.append_mask(other.validity());
-    }
+    // /// Extends the vector by appending elements from another vector.
+    // fn extend_from_vector(&mut self, other: &PVector<T>) {
+    //     self.elements.extend_from_slice(other.elements.as_slice());
+    //     self.validity.append_mask(other.validity());
+    // }
 
     fn append_nulls(&mut self, n: usize) {
         self.elements.push_n(T::zero(), n); // Note that the value we push doesn't actually matter.
         self.validity.append_n(false, n);
     }
 
-    /// Freeze the vector into an immutable one.
-    fn freeze(self) -> PVector<T> {
-        PVector {
-            elements: self.elements.freeze(),
-            validity: self.validity.freeze(),
-        }
-    }
+    // /// Freeze the vector into an immutable one.
+    // fn freeze(self) -> PVector<T> {
+    //     PVector {
+    //         elements: self.elements.freeze(),
+    //         validity: self.validity.freeze(),
+    //     }
+    // }
 
     fn split_off(&mut self, at: usize) -> Self {
         Self {

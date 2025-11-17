@@ -85,22 +85,22 @@
 //! assert_eq!(fsl_vec.elements().len(), 12);
 //! ```
 
-mod vector;
-pub use vector::FixedSizeListVector;
+// mod vector;
+// pub use vector::FixedSizeListVector;
 
-mod scalar;
-pub use scalar::FixedSizeListScalar;
+// mod scalar;
+// pub use scalar::FixedSizeListScalar;
 
 mod vector_mut;
 pub use vector_mut::FixedSizeListVectorMut;
 
-use crate::{Vector, VectorMut};
+use crate::VectorMut;
 
-impl From<FixedSizeListVector> for Vector {
-    fn from(v: FixedSizeListVector) -> Self {
-        Self::FixedSizeList(v)
-    }
-}
+// impl From<FixedSizeListVector> for Vector {
+//     fn from(v: FixedSizeListVector) -> Self {
+//         Self::FixedSizeList(v)
+//     }
+// }
 
 impl From<FixedSizeListVectorMut> for VectorMut {
     fn from(v: FixedSizeListVectorMut) -> Self {

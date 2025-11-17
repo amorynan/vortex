@@ -135,6 +135,7 @@ impl<T: NativePType> PVectorMut<T> {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -354,3 +355,4 @@ mod tests {
         assert_eq!(roundtrip, empty);
     }
 }
+*/

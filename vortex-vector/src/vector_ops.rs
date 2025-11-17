@@ -4,79 +4,16 @@
 //! Definition and implementation of [`VectorOps`] and [`VectorMutOps`] for [`Vector`] and
 //! [`VectorMut`], respectively.
 
-use std::fmt::Debug;
-use std::ops::RangeBounds;
+// use std::fmt::Debug;
+// use std::ops::RangeBounds;
 
-use vortex_mask::{Mask, MaskMut};
+use vortex_mask::MaskMut;
 
-use crate::{Scalar, Vector, VectorMut, private};
+use crate::VectorMut;
 
-/// Common operations for immutable vectors (all the variants of [`Vector`]).
-pub trait VectorOps: private::Sealed + Into<Vector> + Sized {
-    /// The mutable equivalent of this immutable vector.
-    type Mutable: VectorMutOps<Immutable = Self>;
-
-    /// Returns the number of elements in the vector, also referred to as its "length".
-    fn len(&self) -> usize;
-
-    /// Returns `true` if the vector contains no elements.
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Returns the validity mask of the vector, where `true` represents a _valid_ element and
-    /// `false` represents a `null` element.
-    ///
-    /// Note that vectors are **always** considered nullable. "Non-nullable" data will simply have a
-    /// [`Mask`] of [`AllTrue(len)`](Mask::AllTrue). It is on the caller to ensure that they do not
-    /// add nullable data to a vector they want to keep as non-nullable.
-    fn validity(&self) -> &Mask;
-
-    /// Returns the null count of the vector.
-    fn null_count(&self) -> usize {
-        self.validity().false_count()
-    }
-
-    /// Return the scalar at the given index.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the index is out of bounds.
-    fn scalar_at(&self, index: usize) -> Scalar;
-
-    /// Slice the vector from `start` to `end` (exclusive).
-    fn slice(&self, range: impl RangeBounds<usize> + Clone + Debug) -> Self;
-
-    /// Tries to convert `self` into a mutable vector (implementing [`VectorMutOps`]).
-    ///
-    /// This method will only succeed if `self` is the only unique strong reference (it effectively
-    /// "owns" the buffer). If this is true, this method will return a mutable vector with the
-    /// contents of `self` **without** any copying of data.
-    ///
-    /// # Errors
-    ///
-    /// If `self` is not unique, this will fail and return `self` back to the caller.
-    fn try_into_mut(self) -> Result<Self::Mutable, Self>;
-
-    /// Converts `self` into a mutable vector (implementing [`VectorMutOps`]).
-    ///
-    /// This method uses "clone-on-write" semantics, meaning it will clone any underlying data that
-    /// has multiple references (preventing mutable access). `into_mut` can be more efficient than
-    /// [`try_into_mut()`] when mutations are infrequent.
-    ///
-    /// The semantics of `into_mut` are somewhat similar to that of [`Arc::make_mut()`], but instead
-    /// of working with references, this works with owned immutable / mutable types.
-    ///
-    /// [`try_into_mut()`]: Self::try_into_mut
-    /// [`Arc::make_mut()`]: std::sync::Arc::make_mut
-    fn into_mut(self) -> Self::Mutable;
-}
-
+// TODO(connor): Add `private::Sealed` back.
 /// Common operations for mutable vectors (all the variants of [`VectorMut`]).
-pub trait VectorMutOps: private::Sealed + Into<VectorMut> + Sized {
-    /// The immutable equivalent of this mutable vector.
-    type Immutable: VectorOps<Mutable = Self>;
-
+pub trait VectorMutOps: Into<VectorMut> + Sized {
     /// Returns the number of elements in the vector, also referred to as its "length".
     fn len(&self) -> usize;
 
@@ -115,13 +52,13 @@ pub trait VectorMutOps: private::Sealed + Into<VectorMut> + Sized {
     /// Existing underlying capacity is preserved.
     fn truncate(&mut self, len: usize);
 
-    /// Extends the vector by appending elements from another vector.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the `other` vector has the wrong type (for example, a
-    /// [`StructVector`](crate::struct_::StructVector) might have incorrect fields).
-    fn extend_from_vector(&mut self, other: &Self::Immutable);
+    // /// Extends the vector by appending elements from another vector.
+    // ///
+    // /// # Panics
+    // ///
+    // /// Panics if the `other` vector has the wrong type (for example, a
+    // /// [`StructVector`](crate::struct_::StructVector) might have incorrect fields).
+    // fn extend_from_vector(&mut self, other: &Self::Immutable);
 
     /// Appends `n` null elements to the vector.
     ///
@@ -129,8 +66,8 @@ pub trait VectorMutOps: private::Sealed + Into<VectorMut> + Sized {
     /// elements in addition to adding nulls to their validity mask.
     fn append_nulls(&mut self, n: usize);
 
-    /// Converts `self` into an immutable vector.
-    fn freeze(self) -> Self::Immutable;
+    // /// Converts `self` into an immutable vector.
+    // fn freeze(self) -> Self::Immutable;
 
     /// Splits the vector into two at the given index.
     ///
@@ -158,28 +95,28 @@ pub trait VectorMutOps: private::Sealed + Into<VectorMut> + Sized {
     fn unsplit(&mut self, other: Self);
 }
 
-/// Converts a range bounds into a length, given the total length of the vector.
-pub(crate) fn range_bounds_to_len(bounds: impl RangeBounds<usize> + Debug, len: usize) -> usize {
-    use std::ops::Bound;
+// /// Converts a range bounds into a length, given the total length of the vector.
+// pub(crate) fn range_bounds_to_len(bounds: impl RangeBounds<usize> + Debug, len: usize) -> usize {
+//     use std::ops::Bound;
 
-    let start = match bounds.start_bound() {
-        Bound::Included(&s) => s,
-        Bound::Excluded(&s) => s + 1,
-        Bound::Unbounded => 0,
-    };
+//     let start = match bounds.start_bound() {
+//         Bound::Included(&s) => s,
+//         Bound::Excluded(&s) => s + 1,
+//         Bound::Unbounded => 0,
+//     };
 
-    let end = match bounds.end_bound() {
-        Bound::Included(&e) => e + 1,
-        Bound::Excluded(&e) => e,
-        Bound::Unbounded => len,
-    };
+//     let end = match bounds.end_bound() {
+//         Bound::Included(&e) => e + 1,
+//         Bound::Excluded(&e) => e,
+//         Bound::Unbounded => len,
+//     };
 
-    assert!(
-        start <= end && end <= len,
-        "Range {:?} out of bounds for length {}",
-        bounds,
-        len
-    );
+//     assert!(
+//         start <= end && end <= len,
+//         "Range {:?} out of bounds for length {}",
+//         bounds,
+//         len
+//     );
 
-    end - start
-}
+//     end - start
+// }

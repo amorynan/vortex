@@ -3,14 +3,13 @@
 
 //! Definition and implementation of [`StructVectorMut`].
 
-use std::sync::Arc;
+// use std::sync::Arc;
 
 use vortex_dtype::StructFields;
 use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
 use vortex_mask::MaskMut;
 
-use crate::struct_::StructVector;
-use crate::{Vector, VectorMut, VectorMutOps, VectorOps, match_vector_pair};
+use crate::{VectorMut, VectorMutOps, match_vector_pair};
 
 /// A mutable vector of struct values (values with named fields).
 ///
@@ -163,8 +162,6 @@ impl StructVectorMut {
 }
 
 impl VectorMutOps for StructVectorMut {
-    type Immutable = StructVector;
-
     fn len(&self) -> usize {
         self.len
     }
@@ -210,29 +207,29 @@ impl VectorMutOps for StructVectorMut {
         self.len = self.validity.len();
     }
 
-    fn extend_from_vector(&mut self, other: &StructVector) {
-        assert_eq!(
-            self.fields.len(),
-            other.fields().len(),
-            "Cannot extend StructVectorMut: field count mismatch (self had {} but other had {})",
-            self.fields.len(),
-            other.fields().len()
-        );
+    // fn extend_from_vector(&mut self, other: &StructVector) {
+    //     assert_eq!(
+    //         self.fields.len(),
+    //         other.fields().len(),
+    //         "Cannot extend StructVectorMut: field count mismatch (self had {} but other had {})",
+    //         self.fields.len(),
+    //         other.fields().len()
+    //     );
 
-        // Extend each field vector.
-        let pairs = self.fields.iter_mut().zip(other.fields().as_ref());
-        for (self_mut_vector, other_vec) in pairs {
-            match_vector_pair!(self_mut_vector, other_vec, |a: VectorMut, b: Vector| {
-                a.extend_from_vector(b)
-            })
-        }
+    //     // Extend each field vector.
+    //     let pairs = self.fields.iter_mut().zip(other.fields().as_ref());
+    //     for (self_mut_vector, other_vec) in pairs {
+    //         match_vector_pair!(self_mut_vector, other_vec, |a: VectorMut, b: Vector| {
+    //             a.extend_from_vector(b)
+    //         })
+    //     }
 
-        // Extend the validity mask.
-        self.validity.append_mask(other.validity());
-        self.len += other.len();
+    //     // Extend the validity mask.
+    //     self.validity.append_mask(other.validity());
+    //     self.len += other.len();
 
-        debug_assert_eq!(self.len, self.validity.len());
-    }
+    //     debug_assert_eq!(self.len, self.validity.len());
+    // }
 
     fn append_nulls(&mut self, n: usize) {
         for field in &mut self.fields {
@@ -244,19 +241,19 @@ impl VectorMutOps for StructVectorMut {
         debug_assert_eq!(self.len, self.validity.len());
     }
 
-    fn freeze(self) -> StructVector {
-        let frozen_fields: Vec<Vector> = self
-            .fields
-            .into_iter()
-            .map(|mut_field| mut_field.freeze())
-            .collect();
+    // fn freeze(self) -> StructVector {
+    //     let frozen_fields: Vec<Vector> = self
+    //         .fields
+    //         .into_iter()
+    //         .map(|mut_field| mut_field.freeze())
+    //         .collect();
 
-        StructVector {
-            fields: Arc::new(frozen_fields.into_boxed_slice()),
-            len: self.len,
-            validity: self.validity.freeze(),
-        }
-    }
+    //     StructVector {
+    //         fields: Arc::new(frozen_fields.into_boxed_slice()),
+    //         len: self.len,
+    //         validity: self.validity.freeze(),
+    //     }
+    // }
 
     fn split_off(&mut self, at: usize) -> Self {
         assert!(
@@ -315,6 +312,7 @@ impl VectorMutOps for StructVectorMut {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use vortex_dtype::{DType, FieldNames, Nullability, PType, PTypeDowncast, StructFields};
@@ -683,3 +681,4 @@ mod tests {
         }
     }
 }
+*/

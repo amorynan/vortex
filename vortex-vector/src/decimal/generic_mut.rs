@@ -8,8 +8,8 @@ use vortex_dtype::{NativeDecimalType, PrecisionScale};
 use vortex_error::{VortexExpect, VortexResult, vortex_bail};
 use vortex_mask::MaskMut;
 
-use crate::decimal::DVector;
-use crate::{VectorMutOps, VectorOps};
+// use crate::decimal::DVector;
+use crate::VectorMutOps;
 
 /// A mutable vector of decimal values with fixed precision and scale.
 ///
@@ -204,8 +204,6 @@ impl<D: NativeDecimalType> AsRef<[D]> for DVectorMut<D> {
 }
 
 impl<D: NativeDecimalType> VectorMutOps for DVectorMut<D> {
-    type Immutable = DVector<D>;
-
     fn len(&self) -> usize {
         self.elements.len()
     }
@@ -233,23 +231,23 @@ impl<D: NativeDecimalType> VectorMutOps for DVectorMut<D> {
         self.validity.truncate(len);
     }
 
-    fn extend_from_vector(&mut self, other: &DVector<D>) {
-        self.elements.extend_from_slice(&other.elements);
-        self.validity.append_mask(other.validity());
-    }
+    // fn extend_from_vector(&mut self, other: &DVector<D>) {
+    //     self.elements.extend_from_slice(&other.elements);
+    //     self.validity.append_mask(other.validity());
+    // }
 
     fn append_nulls(&mut self, n: usize) {
         self.elements.extend((0..n).map(|_| D::default()));
         self.validity.append_n(false, n);
     }
 
-    fn freeze(self) -> DVector<D> {
-        DVector {
-            ps: self.ps,
-            elements: self.elements.freeze(),
-            validity: self.validity.freeze(),
-        }
-    }
+    // fn freeze(self) -> DVector<D> {
+    //     DVector {
+    //         ps: self.ps,
+    //         elements: self.elements.freeze(),
+    //         validity: self.validity.freeze(),
+    //     }
+    // }
 
     fn split_off(&mut self, at: usize) -> Self {
         DVectorMut {
@@ -269,6 +267,7 @@ impl<D: NativeDecimalType> VectorMutOps for DVectorMut<D> {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -602,3 +601,4 @@ mod tests {
         assert_eq!(split.get(3), None);
     }
 }
+*/

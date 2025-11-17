@@ -99,46 +99,46 @@
 //!
 //! [`f16`]: vortex_dtype::half::f16
 
-mod generic;
-pub use generic::PVector;
+// mod generic;
+// pub use generic::PVector;
 
 mod generic_mut;
 mod generic_mut_impl;
 mod iter;
 pub use generic_mut::PVectorMut;
 
-mod vector;
-pub use vector::PrimitiveVector;
+// mod vector;
+// pub use vector::PrimitiveVector;
 
 mod vector_mut;
 pub use vector_mut::PrimitiveVectorMut;
 
-mod scalar;
-pub use scalar::{PScalar, PrimitiveScalar};
+// mod scalar;
+// pub use scalar::{PScalar, PrimitiveScalar};
 
 mod macros;
 
 use vortex_dtype::NativePType;
 
-use crate::{Vector, VectorMut};
+use crate::VectorMut;
 
-impl From<PrimitiveVector> for Vector {
-    fn from(v: PrimitiveVector) -> Self {
-        Self::Primitive(v)
-    }
-}
+// impl From<PrimitiveVector> for Vector {
+//     fn from(v: PrimitiveVector) -> Self {
+//         Self::Primitive(v)
+//     }
+// }
 
-impl<T: NativePType> From<PVector<T>> for PrimitiveVector {
-    fn from(v: PVector<T>) -> Self {
-        T::upcast(v)
-    }
-}
+// impl<T: NativePType> From<PVector<T>> for PrimitiveVector {
+//     fn from(v: PVector<T>) -> Self {
+//         T::upcast(v)
+//     }
+// }
 
-impl<T: NativePType> From<PVector<T>> for Vector {
-    fn from(v: PVector<T>) -> Self {
-        Self::Primitive(PrimitiveVector::from(v))
-    }
-}
+// impl<T: NativePType> From<PVector<T>> for Vector {
+//     fn from(v: PVector<T>) -> Self {
+//         Self::Primitive(PrimitiveVector::from(v))
+//     }
+// }
 
 impl From<PrimitiveVectorMut> for VectorMut {
     fn from(v: PrimitiveVectorMut) -> Self {

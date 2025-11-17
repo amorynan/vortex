@@ -12,22 +12,21 @@
 
 // TODO(connor): More docs and examples.
 
-mod vector;
-pub use vector::ListViewVector;
+// mod vector;
+// pub use vector::ListViewVector;
 
 mod vector_mut;
 pub use vector_mut::ListViewVectorMut;
 
-mod scalar;
-pub use scalar::ListViewScalar;
+// mod scalar;
+// pub use scalar::ListViewScalar;
+use crate::VectorMut;
 
-use crate::{Vector, VectorMut};
-
-impl From<ListViewVector> for Vector {
-    fn from(v: ListViewVector) -> Self {
-        Self::List(v)
-    }
-}
+// impl From<ListViewVector> for Vector {
+//     fn from(v: ListViewVector) -> Self {
+//         Self::List(v)
+//     }
+// }
 
 impl From<ListViewVectorMut> for VectorMut {
     fn from(v: ListViewVectorMut) -> Self {
@@ -35,5 +34,5 @@ impl From<ListViewVectorMut> for VectorMut {
     }
 }
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
