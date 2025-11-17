@@ -7,9 +7,11 @@
 // use std::fmt::Debug;
 // use std::ops::RangeBounds;
 
-use vortex_mask::MaskMut;
+use std::ops::RangeBounds;
 
-use crate::VectorMut;
+use vortex_mask::Mask;
+
+use crate::{Cow, VectorMut};
 
 // TODO(connor): Add `private::Sealed` back.
 /// Common operations for mutable vectors (all the variants of [`VectorMut`]).
@@ -24,10 +26,26 @@ pub trait VectorMutOps: Into<VectorMut> + Sized {
 
     /// Returns the validity mask of the vector, where `true` represents a _valid_ element and
     /// `false` represents a `null` element.
+    fn validity(&self) -> &Cow<Mask>;
+
+    /// Returns the mutable validity mask of the vector, where `true` represents a _valid_ element
+    /// and `false` represents a `null` element.
     ///
-    /// Note that while this returns a [`MaskMut`] (which is typically an owned type), the caller is
-    /// only allowed to inspect it via the shared reference.
-    fn validity(&self) -> &MaskMut;
+    /// # Safety
+    ///
+    /// The caller must ensure that any mutations to the validity mask do not violate the invariants
+    /// of the vector (e.g., the length must remain consistent with the the rest of the vector).
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask>;
+
+    // /// Return the scalar at the given index.
+    // ///
+    // /// # Panics
+    // ///
+    // /// Panics if the index is out of bounds.
+    // fn scalar_at(&self, index: usize) -> Scalar;
+
+    /// Slice the vector from `start` to `end` (exclusive).
+    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self;
 
     /// Returns the total number of elements the vector can hold without reallocating.
     fn capacity(&self) -> usize;
@@ -52,13 +70,13 @@ pub trait VectorMutOps: Into<VectorMut> + Sized {
     /// Existing underlying capacity is preserved.
     fn truncate(&mut self, len: usize);
 
-    // /// Extends the vector by appending elements from another vector.
-    // ///
-    // /// # Panics
-    // ///
-    // /// Panics if the `other` vector has the wrong type (for example, a
-    // /// [`StructVector`](crate::struct_::StructVector) might have incorrect fields).
-    // fn extend_from_vector(&mut self, other: &Self::Immutable);
+    /// Extends the vector by appending elements from another vector.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `other` vector has the wrong type (for example, a
+    /// [`StructVector`](crate::struct_::StructVector) might have incorrect fields).
+    fn extend_from_vector(&mut self, other: &Self);
 
     /// Appends `n` null elements to the vector.
     ///
@@ -66,8 +84,8 @@ pub trait VectorMutOps: Into<VectorMut> + Sized {
     /// elements in addition to adding nulls to their validity mask.
     fn append_nulls(&mut self, n: usize);
 
-    // /// Converts `self` into an immutable vector.
-    // fn freeze(self) -> Self::Immutable;
+    /// Converts `self` into an immutable vector by recursively calling [`Cow::freeze`].
+    fn freeze(self) -> Self;
 
     /// Splits the vector into two at the given index.
     ///
