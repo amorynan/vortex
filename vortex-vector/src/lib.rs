@@ -23,6 +23,7 @@ pub mod struct_;
 // mod scalar;
 // mod scalar_ops;
 
+mod cow;
 // mod vector;
 mod vector_mut;
 mod vector_ops;
@@ -31,6 +32,7 @@ mod macros;
 // mod private;
 // mod scalar_macros;
 
+pub use cow::{Cow, IntoFrozen, IntoMut};
 // pub use datum::Datum;
 // pub use scalar::Scalar;
 // pub use scalar_ops::ScalarOps;
