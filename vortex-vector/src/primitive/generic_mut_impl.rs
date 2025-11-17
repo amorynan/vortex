@@ -3,7 +3,6 @@
 
 //! Helper methods for [`PVectorMut<T>`] that mimic the behavior of [`std::vec::Vec`].
 
-use vortex_buffer::BufferMut;
 use vortex_dtype::NativePType;
 
 use crate::VectorMutOps;
@@ -24,15 +23,17 @@ impl<T: NativePType> PVectorMut<T> {
     ///
     /// Panics if the index is out of bounds.
     pub fn get(&self, index: usize) -> Option<T> {
-        self.validity.value(index).then(|| self.elements[index])
+        self.validity
+            .value(index)
+            .then(|| self.elements.as_ref()[index])
     }
 
     /// Pushes an element to the back of the vector.
     ///
     /// The element is treated as non-null.
     pub fn push(&mut self, value: T) {
-        self.elements.push(value);
-        self.validity.append_n(true, 1);
+        self.elements.to_mut().push(value);
+        self.validity.to_mut().append_n(true, 1);
     }
 
     /// Pushes an element without bounds checking.
@@ -45,13 +46,16 @@ impl<T: NativePType> PVectorMut<T> {
     /// buffers.
     #[inline]
     pub unsafe fn push_unchecked(&mut self, value: T) {
+        let len = self.len();
+        let elements = self.elements.to_mut();
+
         // SAFETY: The caller guarantees there is sufficient capacity in the elements buffer,
         // so we can write to the spare capacity and increment the length without bounds checks.
         unsafe {
-            self.elements.spare_capacity_mut()[0].write(value);
-            self.elements.set_len(self.len() + 1);
+            elements.spare_capacity_mut()[0].write(value);
+            elements.set_len(len + 1);
         }
-        self.validity.append_n(true, 1);
+        self.validity.to_mut().append_n(true, 1);
     }
 
     /// Appends an optional element to the back of the vector, where `None` represents a null
@@ -60,9 +64,28 @@ impl<T: NativePType> PVectorMut<T> {
         if let Some(value) = value {
             self.push(value);
         } else {
-            self.elements.push(T::default());
-            self.validity.append_n(false, 1);
+            self.elements.to_mut().push(T::default());
+            self.validity.to_mut().append_n(false, 1);
         }
+    }
+
+    /// Set the length of the vector.
+    ///
+    /// # Safety
+    ///
+    /// - `new_len` must be less than or equal to [`capacity()`].
+    /// - The elements at `old_len..new_len` must be initialized.
+    ///
+    /// [`capacity()`]: Self::capacity
+    pub unsafe fn set_len(&mut self, new_len: usize) {
+        let elements = self.elements.to_mut();
+        let validity = self.validity.to_mut();
+
+        debug_assert!(new_len < elements.capacity());
+        debug_assert!(new_len < validity.capacity());
+
+        unsafe { elements.set_len(new_len) };
+        unsafe { validity.set_len(new_len) };
     }
 }
 
@@ -92,21 +115,12 @@ impl<T: NativePType> AsMut<[T]> for PVectorMut<T> {
     /// [`validity()`]: crate::VectorOps::validity
     #[inline]
     fn as_mut(&mut self) -> &mut [T] {
-        self.elements.as_mut_slice()
+        self.elements.to_mut().as_mut_slice()
     }
 }
 
 /// Batch operations for [`PVectorMut`].
 impl<T: NativePType> PVectorMut<T> {
-    /// Returns the internal [`BufferMut`] of the [`PVectorMut`].
-    ///
-    /// Note that the internal buffer may hold garbage data in place of nulls. That information is
-    /// tracked by the [`validity()`](Self::validity).
-    #[inline]
-    pub fn elements(&self) -> &BufferMut<T> {
-        &self.elements
-    }
-
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the difference, with each
@@ -123,15 +137,24 @@ impl<T: NativePType> PVectorMut<T> {
 
             match value {
                 Some(value) => {
-                    self.elements.push_n(value, additional);
-                    self.validity.append_n(true, additional);
+                    self.elements.to_mut().push_n(value, additional);
+                    self.validity.to_mut().append_n(true, additional);
                 }
                 None => {
-                    self.elements.push_n(T::default(), additional);
-                    self.validity.append_n(false, additional);
+                    self.elements.to_mut().push_n(T::default(), additional);
+                    self.validity.to_mut().append_n(false, additional);
                 }
             }
         }
+    }
+
+    /// Append n values to the vector.
+    pub fn append_values(&mut self, value: T, n: usize)
+    where
+        T: Copy,
+    {
+        self.elements.to_mut().push_n(value, n);
+        self.validity.to_mut().append_n(true, n);
     }
 }
 

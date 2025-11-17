@@ -336,6 +336,21 @@ impl MaskMut {
             Inner::Builder(bits) => !bits.is_empty() && bits.true_count() == 0,
         }
     }
+
+    /// Gets the true count of the mask.
+    pub fn true_count(&self) -> usize {
+        match &self.0 {
+            Inner::Empty { .. } => 0,
+            Inner::Constant { value, len, .. } => {
+                if *value {
+                    *len
+                } else {
+                    0
+                }
+            }
+            Inner::Builder(bits) => bits.true_count(),
+        }
+    }
 }
 
 impl Mask {

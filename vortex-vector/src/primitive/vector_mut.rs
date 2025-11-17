@@ -3,13 +3,15 @@
 
 //! Definition and implementation of [`PrimitiveVectorMut`].
 
+use std::ops::RangeBounds;
+
 use vortex_dtype::half::f16;
 use vortex_dtype::{NativePType, PType, PTypeDowncast, PTypeUpcast};
 use vortex_error::vortex_panic;
-use vortex_mask::MaskMut;
+use vortex_mask::Mask;
 
 use crate::primitive::PVectorMut;
-use crate::{VectorMutOps, match_each_pvector_mut};
+use crate::{Cow, VectorMutOps, match_each_pvector_mut};
 
 /// A mutable vector of primitive values.
 ///
@@ -86,8 +88,16 @@ impl VectorMutOps for PrimitiveVectorMut {
         match_each_pvector_mut!(self, |v| { v.len() })
     }
 
-    fn validity(&self) -> &MaskMut {
+    fn validity(&self) -> &Cow<Mask> {
         match_each_pvector_mut!(self, |v| { v.validity() })
+    }
+
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        unsafe { match_each_pvector_mut!(self, |v| { v.validity_mut() }) }
+    }
+
+    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self {
+        match_each_pvector_mut!(self, |v| { v.slice(range).into() })
     }
 
     fn capacity(&self) -> usize {
@@ -106,30 +116,30 @@ impl VectorMutOps for PrimitiveVectorMut {
         match_each_pvector_mut!(self, |v| { v.truncate(len) })
     }
 
-    // fn extend_from_vector(&mut self, other: &PrimitiveVector) {
-    //     match (self, other) {
-    //         (Self::U8(a), PrimitiveVector::U8(b)) => a.extend_from_vector(b),
-    //         (Self::U16(a), PrimitiveVector::U16(b)) => a.extend_from_vector(b),
-    //         (Self::U32(a), PrimitiveVector::U32(b)) => a.extend_from_vector(b),
-    //         (Self::U64(a), PrimitiveVector::U64(b)) => a.extend_from_vector(b),
-    //         (Self::I8(a), PrimitiveVector::I8(b)) => a.extend_from_vector(b),
-    //         (Self::I16(a), PrimitiveVector::I16(b)) => a.extend_from_vector(b),
-    //         (Self::I32(a), PrimitiveVector::I32(b)) => a.extend_from_vector(b),
-    //         (Self::I64(a), PrimitiveVector::I64(b)) => a.extend_from_vector(b),
-    //         (Self::F16(a), PrimitiveVector::F16(b)) => a.extend_from_vector(b),
-    //         (Self::F32(a), PrimitiveVector::F32(b)) => a.extend_from_vector(b),
-    //         (Self::F64(a), PrimitiveVector::F64(b)) => a.extend_from_vector(b),
-    //         _ => ::vortex_error::vortex_panic!("Mismatched primitive vector types"),
-    //     }
-    // }
+    fn extend_from_vector(&mut self, other: &Self) {
+        match (self, other) {
+            (Self::U8(a), Self::U8(b)) => a.extend_from_vector(b),
+            (Self::U16(a), Self::U16(b)) => a.extend_from_vector(b),
+            (Self::U32(a), Self::U32(b)) => a.extend_from_vector(b),
+            (Self::U64(a), Self::U64(b)) => a.extend_from_vector(b),
+            (Self::I8(a), Self::I8(b)) => a.extend_from_vector(b),
+            (Self::I16(a), Self::I16(b)) => a.extend_from_vector(b),
+            (Self::I32(a), Self::I32(b)) => a.extend_from_vector(b),
+            (Self::I64(a), Self::I64(b)) => a.extend_from_vector(b),
+            (Self::F16(a), Self::F16(b)) => a.extend_from_vector(b),
+            (Self::F32(a), Self::F32(b)) => a.extend_from_vector(b),
+            (Self::F64(a), Self::F64(b)) => a.extend_from_vector(b),
+            _ => ::vortex_error::vortex_panic!("Mismatched primitive vector types"),
+        }
+    }
 
     fn append_nulls(&mut self, n: usize) {
         match_each_pvector_mut!(self, |v| { v.append_nulls(n) })
     }
 
-    // fn freeze(self) -> PrimitiveVector {
-    //     match_each_pvector_mut!(self, |v| { v.freeze().into() })
-    // }
+    fn freeze(self) -> Self {
+        match_each_pvector_mut!(self, |v| { v.freeze().into() })
+    }
 
     fn split_off(&mut self, at: usize) -> Self {
         match_each_pvector_mut!(self, |v| { v.split_off(at).into() })
@@ -363,11 +373,10 @@ impl<'a> PTypeDowncast for &'a mut PrimitiveVectorMut {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::VectorOps;
+    use crate::VectorMutOps;
 
     #[test]
     fn test_from_iter_with_options() {
@@ -429,4 +438,3 @@ mod tests {
         assert_eq!(frozen.validity().true_count(), 2);
     }
 }
-*/

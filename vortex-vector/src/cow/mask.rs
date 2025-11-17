@@ -49,6 +49,18 @@ impl Cow<Mask> {
         }
     }
 
+    /// Returns the boolean value at a given index.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the index is out of bounds.
+    pub fn true_count(&self) -> usize {
+        match self {
+            Cow::Frozen(frozen) => frozen.true_count(),
+            Cow::Mutable(mutable) => mutable.true_count(),
+        }
+    }
+
     pub fn slice(&self, range: impl RangeBounds<usize>) -> Self {
         match self {
             Cow::Frozen(frozen) => Cow::Frozen(frozen.slice(range)),

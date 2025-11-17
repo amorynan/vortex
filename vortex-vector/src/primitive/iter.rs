@@ -40,12 +40,12 @@ impl<T: NativePType> Extend<Option<T>> for PVectorMut<T> {
         for opt_val in iter {
             match opt_val {
                 Some(val) => {
-                    self.elements.push(val);
-                    self.validity.append_n(true, 1);
+                    self.elements.to_mut().push(val);
+                    self.validity.to_mut().append_n(true, 1);
                 }
                 None => {
-                    self.elements.push(T::default());
-                    self.validity.append_n(false, 1);
+                    self.elements.to_mut().push(T::default());
+                    self.validity.to_mut().append_n(false, 1);
                 }
             }
         }
@@ -78,11 +78,13 @@ impl<T: NativePType> Extend<T> for PVectorMut<T> {
     ///
     /// Internally, this uses the [`Extend<T>`] trait implementation.
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        let start_len = self.len();
+        let start_len = self.elements.len();
 
         // Allow the `BufferMut` implementation to handle extending efficiently.
-        self.elements.extend(iter);
-        self.validity.append_n(true, self.len() - start_len);
+        self.elements.to_mut().extend(iter);
+        self.validity
+            .to_mut()
+            .append_n(true, self.elements.len() - start_len);
     }
 }
 
@@ -135,8 +137,9 @@ impl<T: NativePType> Iterator for PVectorMutIterator<T> {
             let value = self
                 .vector
                 .validity
+                .to_mut()
                 .value(self.index)
-                .then(|| self.vector.elements[self.index]);
+                .then(|| self.vector.elements.as_ref()[self.index]);
             self.index += 1;
             value
         })
