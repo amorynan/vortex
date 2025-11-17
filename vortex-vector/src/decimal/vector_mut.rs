@@ -3,15 +3,17 @@
 
 //! Definition and implementation of [`DecimalVectorMut`].
 
+use std::ops::RangeBounds;
+
 use vortex_dtype::{
     DecimalDType, DecimalType, DecimalTypeDowncast, DecimalTypeUpcast, NativeDecimalType,
     PrecisionScale, i256, match_each_decimal_value_type,
 };
 use vortex_error::vortex_panic;
-use vortex_mask::MaskMut;
+use vortex_mask::Mask;
 
 use crate::decimal::DVectorMut;
-use crate::{VectorMutOps, match_each_dvector_mut};
+use crate::{Cow, VectorMutOps, match_each_dvector_mut};
 
 /// An enum over all supported decimal mutable vector types.
 #[derive(Clone, Debug)]
@@ -58,8 +60,12 @@ impl VectorMutOps for DecimalVectorMut {
         match_each_dvector_mut!(self, |d| { d.len() })
     }
 
-    fn validity(&self) -> &MaskMut {
+    fn validity(&self) -> &Cow<Mask> {
         match_each_dvector_mut!(self, |d| { d.validity() })
+    }
+
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        unsafe { match_each_dvector_mut!(self, |d| { d.validity_mut() }) }
     }
 
     fn capacity(&self) -> usize {
@@ -78,25 +84,29 @@ impl VectorMutOps for DecimalVectorMut {
         match_each_dvector_mut!(self, |d| { d.truncate(len) })
     }
 
-    // fn extend_from_vector(&mut self, other: &DecimalVector) {
-    //     match (self, other) {
-    //         (Self::D8(s), DecimalVector::D8(o)) => s.extend_from_vector(o),
-    //         (Self::D16(s), DecimalVector::D16(o)) => s.extend_from_vector(o),
-    //         (Self::D32(s), DecimalVector::D32(o)) => s.extend_from_vector(o),
-    //         (Self::D64(s), DecimalVector::D64(o)) => s.extend_from_vector(o),
-    //         (Self::D128(s), DecimalVector::D128(o)) => s.extend_from_vector(o),
-    //         (Self::D256(s), DecimalVector::D256(o)) => s.extend_from_vector(o),
-    //         _ => vortex_panic!("Mismatched decimal vector types in extend_from_vector"),
-    //     }
-    // }
+    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self {
+        match_each_dvector_mut!(self, |d| { d.slice(range).into() })
+    }
+
+    fn extend_from_vector(&mut self, other: &Self) {
+        match (self, other) {
+            (Self::D8(s), Self::D8(o)) => s.extend_from_vector(o),
+            (Self::D16(s), Self::D16(o)) => s.extend_from_vector(o),
+            (Self::D32(s), Self::D32(o)) => s.extend_from_vector(o),
+            (Self::D64(s), Self::D64(o)) => s.extend_from_vector(o),
+            (Self::D128(s), Self::D128(o)) => s.extend_from_vector(o),
+            (Self::D256(s), Self::D256(o)) => s.extend_from_vector(o),
+            _ => vortex_panic!("Mismatched decimal vector types in extend_from_vector"),
+        }
+    }
 
     fn append_nulls(&mut self, n: usize) {
         match_each_dvector_mut!(self, |d| { d.append_nulls(n) })
     }
 
-    // fn freeze(self) -> DecimalVector {
-    //     match_each_dvector_mut!(self, |d| { d.freeze().into() })
-    // }
+    fn freeze(self) -> Self {
+        match_each_dvector_mut!(self, |d| { d.freeze().into() })
+    }
 
     fn split_off(&mut self, at: usize) -> Self {
         match_each_dvector_mut!(self, |d| { d.split_off(at).into() })

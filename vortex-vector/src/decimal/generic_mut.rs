@@ -3,13 +3,14 @@
 
 //! Definition and implementation of [`DVectorMut<D>`].
 
-use vortex_buffer::BufferMut;
+use std::ops::RangeBounds;
+
+use vortex_buffer::{Buffer, BufferMut};
 use vortex_dtype::{NativeDecimalType, PrecisionScale};
 use vortex_error::{VortexExpect, VortexResult, vortex_bail};
-use vortex_mask::MaskMut;
+use vortex_mask::{Mask, MaskMut};
 
-// use crate::decimal::DVector;
-use crate::VectorMutOps;
+use crate::{Cow, VectorMutOps};
 
 /// A mutable vector of decimal values with fixed precision and scale.
 ///
@@ -28,10 +29,10 @@ use crate::VectorMutOps;
 pub struct DVectorMut<D> {
     /// The precision and scale of each decimal in the decimal vector.
     pub(super) ps: PrecisionScale<D>,
-    /// The mutable buffer representing the vector decimal elements.
-    pub(super) elements: BufferMut<D>,
+    /// The buffer representing the vector decimal elements (can be frozen or mutable).
+    pub(super) elements: Cow<Buffer<D>>,
     /// The validity mask (where `true` represents an element is **not** null).
-    pub(super) validity: MaskMut,
+    pub(super) validity: Cow<Mask>,
 }
 
 impl<D: NativeDecimalType> DVectorMut<D> {
@@ -44,7 +45,7 @@ impl<D: NativeDecimalType> DVectorMut<D> {
     ///
     /// - The lengths of the `elements` and `validity` do not match.
     /// - Any of the elements are out of bounds for the given [`PrecisionScale`].
-    pub fn new(ps: PrecisionScale<D>, elements: BufferMut<D>, validity: MaskMut) -> Self {
+    pub fn new(ps: PrecisionScale<D>, elements: Cow<Buffer<D>>, validity: Cow<Mask>) -> Self {
         Self::try_new(ps, elements, validity).vortex_expect("Failed to create `DVector`")
     }
 
@@ -59,8 +60,8 @@ impl<D: NativeDecimalType> DVectorMut<D> {
     /// - Any of the elements are out of bounds for the given [`PrecisionScale`].
     pub fn try_new(
         ps: PrecisionScale<D>,
-        elements: BufferMut<D>,
-        validity: MaskMut,
+        elements: Cow<Buffer<D>>,
+        validity: Cow<Mask>,
     ) -> VortexResult<Self> {
         if elements.len() != validity.len() {
             vortex_bail!(
@@ -71,7 +72,7 @@ impl<D: NativeDecimalType> DVectorMut<D> {
         }
 
         // We assert that each element is within bounds for the given precision/scale.
-        if !elements.iter().all(|e| ps.is_valid(*e)) {
+        if !elements.as_ref().iter().all(|e| ps.is_valid(*e)) {
             vortex_bail!(
                 "One or more elements are out of bounds for precision {} and scale {}",
                 ps.precision(),
@@ -97,8 +98,8 @@ impl<D: NativeDecimalType> DVectorMut<D> {
     /// - All elements are in bounds for the given [`PrecisionScale`].
     pub unsafe fn new_unchecked(
         ps: PrecisionScale<D>,
-        elements: BufferMut<D>,
-        validity: MaskMut,
+        elements: Cow<Buffer<D>>,
+        validity: Cow<Mask>,
     ) -> Self {
         if cfg!(debug_assertions) {
             Self::try_new(ps, elements, validity).vortex_expect("Failed to create `DVectorMut`")
@@ -115,14 +116,14 @@ impl<D: NativeDecimalType> DVectorMut<D> {
     pub fn with_capacity(ps: PrecisionScale<D>, capacity: usize) -> Self {
         Self {
             ps,
-            elements: BufferMut::with_capacity(capacity),
-            validity: MaskMut::with_capacity(capacity),
+            elements: Cow::Mutable(BufferMut::with_capacity(capacity)),
+            validity: Cow::Mutable(MaskMut::with_capacity(capacity)),
         }
     }
 
     /// Decomposes the decimal vector into its constituent parts ([`PrecisionScale`], decimal
     /// buffer, and validity).
-    pub fn into_parts(self) -> (PrecisionScale<D>, BufferMut<D>, MaskMut) {
+    pub fn into_parts(self) -> (PrecisionScale<D>, Cow<Buffer<D>>, Cow<Mask>) {
         (self.ps, self.elements, self.validity)
     }
 
@@ -132,7 +133,7 @@ impl<D: NativeDecimalType> DVectorMut<D> {
     }
 
     /// Returns a reference to the underlying elements buffer containing the decimal data.
-    pub fn elements(&self) -> &BufferMut<D> {
+    pub fn elements(&self) -> &Cow<Buffer<D>> {
         &self.elements
     }
 
@@ -142,18 +143,8 @@ impl<D: NativeDecimalType> DVectorMut<D> {
     ///
     /// Modifying the elements buffer directly may violate the precision/scale constraints.
     /// The caller must ensure that any modifications maintain these invariants.
-    pub unsafe fn elements_mut(&mut self) -> &mut BufferMut<D> {
+    pub unsafe fn elements_mut(&mut self) -> &mut Cow<Buffer<D>> {
         &mut self.elements
-    }
-
-    /// Returns a mutable reference to the underlying validity mask of the vector.
-    ///
-    /// # Safety
-    ///
-    /// The caller must ensure that when the length of the validity changes, the length
-    /// of the elements is changed to match it.
-    pub unsafe fn validity_mut(&mut self) -> &mut MaskMut {
-        &mut self.validity
     }
 
     /// Gets a nullable element at the given index, panicking on out-of-bounds.
@@ -169,7 +160,9 @@ impl<D: NativeDecimalType> DVectorMut<D> {
     ///
     /// Panics if the index is out of bounds.
     pub fn get(&self, index: usize) -> Option<&D> {
-        self.validity.value(index).then(|| &self.elements[index])
+        self.validity
+            .value(index)
+            .then(|| &self.elements.as_ref()[index])
     }
 
     /// Appends a new element to the end of the vector.
@@ -191,15 +184,15 @@ impl<D: NativeDecimalType> DVectorMut<D> {
             vortex_bail!("Value {:?} is out of bounds for {}", value, self.ps);
         }
 
-        self.elements.push_n(value, n);
-        self.validity.append_n(true, n);
+        self.elements.to_mut().push_n(value, n);
+        self.validity.to_mut().append_n(true, n);
         Ok(())
     }
 }
 
 impl<D: NativeDecimalType> AsRef<[D]> for DVectorMut<D> {
     fn as_ref(&self) -> &[D] {
-        &self.elements
+        self.elements.as_ref()
     }
 }
 
@@ -208,52 +201,66 @@ impl<D: NativeDecimalType> VectorMutOps for DVectorMut<D> {
         self.elements.len()
     }
 
-    fn validity(&self) -> &MaskMut {
+    fn validity(&self) -> &Cow<Mask> {
         &self.validity
     }
 
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        &mut self.validity
+    }
+
     fn capacity(&self) -> usize {
-        self.elements.capacity()
+        // TODO(connor): It seems weird that we would need to call `to_mut` here.
+        // Similar issue as in primitive - capacity needs design decision.
+        todo!("TODO(connor): capacity() needs design decision for Cow types")
     }
 
     fn reserve(&mut self, additional: usize) {
-        self.elements.reserve(additional);
-        self.validity.reserve(additional);
+        self.elements.to_mut().reserve(additional);
+        self.validity.to_mut().reserve(additional);
     }
 
     fn clear(&mut self) {
-        self.elements.clear();
-        self.validity.clear();
+        self.elements.to_mut().clear();
+        self.validity.to_mut().clear();
     }
 
     fn truncate(&mut self, len: usize) {
-        self.elements.truncate(len);
-        self.validity.truncate(len);
+        self.elements.to_mut().truncate(len);
+        self.validity.to_mut().truncate(len);
     }
 
-    // fn extend_from_vector(&mut self, other: &DVector<D>) {
-    //     self.elements.extend_from_slice(&other.elements);
-    //     self.validity.append_mask(other.validity());
-    // }
+    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self {
+        // TODO(connor): `Cow<Buffer<D>>::slice()` for the Mutable variant may not be fully implemented.
+        let elements = self.elements.slice(range.clone());
+        let validity = self.validity.slice(range);
+        Self::new(self.ps, elements, validity)
+    }
+
+    fn extend_from_vector(&mut self, _other: &Self) {
+        // TODO(connor): Need to figure out how to extend from Cow types.
+        // The issue is appending from potentially frozen masks/buffers.
+        todo!("TODO(connor): extend_from_vector needs implementation for Cow types")
+    }
 
     fn append_nulls(&mut self, n: usize) {
-        self.elements.extend((0..n).map(|_| D::default()));
-        self.validity.append_n(false, n);
+        self.elements.to_mut().extend((0..n).map(|_| D::default()));
+        self.validity.to_mut().append_n(false, n);
     }
 
-    // fn freeze(self) -> DVector<D> {
-    //     DVector {
-    //         ps: self.ps,
-    //         elements: self.elements.freeze(),
-    //         validity: self.validity.freeze(),
-    //     }
-    // }
+    fn freeze(self) -> Self {
+        Self {
+            ps: self.ps,
+            elements: Cow::Frozen(self.elements.freeze()),
+            validity: Cow::Frozen(self.validity.freeze()),
+        }
+    }
 
     fn split_off(&mut self, at: usize) -> Self {
         DVectorMut {
             ps: self.ps,
-            elements: self.elements.split_off(at),
-            validity: self.validity.split_off(at),
+            elements: Cow::Mutable(self.elements.to_mut().split_off(at)),
+            validity: Cow::Mutable(self.validity.to_mut().split_off(at)),
         }
     }
 
@@ -262,8 +269,8 @@ impl<D: NativeDecimalType> VectorMutOps for DVectorMut<D> {
             *self = other;
             return;
         }
-        self.elements.unsplit(other.elements);
-        self.validity.unsplit(other.validity);
+        self.elements.to_mut().unsplit(other.elements.into_mut());
+        self.validity.to_mut().unsplit(other.validity.into_mut());
     }
 }
 
