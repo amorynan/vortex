@@ -6,8 +6,8 @@
 use vortex_buffer::BitBufferMut;
 use vortex_mask::MaskMut;
 
-use crate::VectorMutOps;
 use crate::bool::BoolVectorMut;
+use crate::{Cow, VectorMutOps};
 
 impl FromIterator<Option<bool>> for BoolVectorMut {
     /// Creates a new [`BoolVectorMut`] from an iterator of `Option<bool>` values.
@@ -50,7 +50,10 @@ impl FromIterator<Option<bool>> for BoolVectorMut {
             }
         }
 
-        BoolVectorMut { bits, validity }
+        BoolVectorMut {
+            bits: Cow::Mutable(bits),
+            validity: Cow::Mutable(validity),
+        }
     }
 }
 
@@ -76,8 +79,8 @@ impl FromIterator<bool> for BoolVectorMut {
         let validity = MaskMut::new_true(buffer.len());
 
         BoolVectorMut {
-            bits: buffer,
-            validity,
+            bits: Cow::Mutable(buffer),
+            validity: Cow::Mutable(validity),
         }
     }
 }
