@@ -3,6 +3,7 @@
 
 use std::mem::{transmute, transmute_copy};
 
+use crate::BitPackedArray;
 use fastlanes::{BitPacking, FastLanes};
 use static_assertions::const_assert_eq;
 use vortex_array::pipeline::{
@@ -11,9 +12,9 @@ use vortex_array::pipeline::{
 use vortex_buffer::Buffer;
 use vortex_dtype::{match_each_integer_ptype, PTypeDowncastExt, PhysicalPType};
 use vortex_error::VortexResult;
-use vortex_vector::VectorOps;
-
-use crate::BitPackedArray;
+use vortex_mask::MaskMut;
+use vortex_vector::primitive::PVector;
+use vortex_vector::{Cow, Vector, VectorOps};
 
 /// The size of a FastLanes vector of elements.
 const FL_VECTOR_SIZE: usize = 1024;
@@ -124,14 +125,14 @@ impl<BP: PhysicalPType<Physical: BitPacking>> Kernel for AlignedBitPackedKernel<
         &mut self,
         _ctx: &mut KernelCtx,
         selection: &BitView,
-        out: VectorMut,
-    ) -> VortexResult<VectorMut> {
+        out: Vector,
+    ) -> VortexResult<Vector> {
         if selection.true_count() == 0 {
             debug_assert!(out.is_empty());
             return Ok(out);
         }
 
-        let mut output: PVectorMut<BP> = out.into_primitive().downcast();
+        let mut output: PVector<BP> = out.into_primitive().downcast();
         debug_assert!(output.is_empty());
 
         let packed_offset = self.num_chunks_unpacked * self.packed_stride;
@@ -140,7 +141,9 @@ impl<BP: PhysicalPType<Physical: BitPacking>> Kernel for AlignedBitPackedKernel<
         // If the true count is very small (the selection is sparse), we can unpack individual
         // elements directly into the output vector.
         if selection.true_count() < SCALAR_UNPACK_THRESHOLD {
-            output.reserve(selection.true_count());
+            // FIXME(ngates): can't really reserve on a cow object.
+            //  But if we can't reserve, then we can't really push unchecked either.
+            // output.reserve(selection.true_count());
 
             selection.iter_ones(|idx| {
                 if self.validity.value(idx) {
@@ -171,7 +174,7 @@ impl<BP: PhysicalPType<Physical: BitPacking>> Kernel for AlignedBitPackedKernel<
         // Otherwise if the mask is dense, it is faster to fully unpack the entire 1024
         // element lane with SIMD / FastLanes and let other nodes in the pipeline decide if they
         // want to perform the selection filter themselves.
-        let (mut elements, _validity) = output.into_parts();
+        let mut elements = output.into_elements().into_mut();
 
         elements.reserve(N);
         // SAFETY: we just reserved enough capacity.
@@ -195,7 +198,7 @@ impl<BP: PhysicalPType<Physical: BitPacking>> Kernel for AlignedBitPackedKernel<
 
         self.num_chunks_unpacked += 1;
 
-        Ok(PVectorMut::new(elements, chunk_validity).into())
+        Ok(PVector::new(Cow::Mutable(elements), Cow::Mutable(chunk_validity)).into())
     }
 }
 

@@ -310,7 +310,7 @@ impl Pipeline {
                         } else {
                             // TODO(ngates): this is janky and forces us to filter validity also,
                             //  but we need the tail.len() == N in order to invoke filter.
-                            todo!()
+                            // todo!()
                             // if tail.len() != N {
                             //     tail.append_nulls(N - tail.len());
                             // }

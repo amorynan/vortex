@@ -73,6 +73,10 @@ impl<T> PVector<T> {
         }
     }
 
+    pub fn into_parts(self) -> (Cow<Buffer<T>>, Cow<Mask>) {
+        (self.elements, self.validity)
+    }
+
     pub fn into_frozen_parts(self) -> (Buffer<T>, Mask) {
         (self.elements.into_frozen(), self.validity.into_frozen())
     }
@@ -95,6 +99,10 @@ impl<T> PVector<T> {
     #[inline]
     pub unsafe fn elements_mut(&mut self) -> &mut Cow<Buffer<T>> {
         &mut self.elements
+    }
+
+    pub fn into_elements(self) -> Cow<Buffer<T>> {
+        self.elements
     }
 }
 
