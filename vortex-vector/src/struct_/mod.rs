@@ -12,7 +12,7 @@
 //! use vortex_vector::null::NullVector;
 //! use vortex_vector::primitive::PVector;
 //! use vortex_vector::struct_::StructVector;
-//! use vortex_vector::{VectorMut, VectorMutOps};
+//! use vortex_vector::{Vector, VectorOps};
 //! use vortex_mask::MaskMut;
 //!
 //! // Create a struct with three fields: nulls, booleans, and integers.
@@ -28,15 +28,15 @@
 //!
 //! ## Working with [`split_off()`] and [`unsplit()`]
 //!
-//! [`split_off()`]: crate::VectorMutOps::split_off
-//! [`unsplit()`]: crate::VectorMutOps::unsplit
+//! [`split_off()`]: crate::VectorOps::split_off
+//! [`unsplit()`]: crate::VectorOps::unsplit
 //!
 //! ```
 //! use vortex_vector::bool::BoolVector;
 //! use vortex_vector::null::NullVector;
 //! use vortex_vector::primitive::PVector;
 //! use vortex_vector::struct_::StructVector;
-//! use vortex_vector::{VectorMut, VectorMutOps};
+//! use vortex_vector::{Vector, VectorOps};
 //! use vortex_mask::MaskMut;
 //!
 //! let fields = Box::new([
@@ -64,7 +64,7 @@
 //! use vortex_vector::null::NullVector;
 //! use vortex_vector::primitive::PVector;
 //! use vortex_vector::struct_::StructVector;
-//! use vortex_vector::{VectorMut, VectorMutOps};
+//! use vortex_vector::{Vector, VectorOps};
 //! use vortex_mask::MaskMut;
 //! use vortex_dtype::PTypeDowncast;
 //!
@@ -77,13 +77,13 @@
 //! let struct_vec = StructVector::new(fields, MaskMut::new_true(3));
 //!
 //! // Access the boolean field vector (field index 1).
-//! if let VectorMut::Bool(bool_vec) = struct_vec.fields()[1].clone() {
+//! if let Vector::Bool(bool_vec) = struct_vec.fields()[1].clone() {
 //!     let values: Vec<_> = bool_vec.into_iter().map(|v| v.unwrap()).collect();
 //!     assert_eq!(values, vec![true, false, true]);
 //! }
 //!
 //! // Access the integer field column (field index 2).
-//! if let VectorMut::Primitive(prim_vec) = struct_vec.fields()[2].clone() {
+//! if let Vector::Primitive(prim_vec) = struct_vec.fields()[2].clone() {
 //!     let values: Vec<_> = prim_vec.into_i32().into_iter().map(|v| v.unwrap()).collect();
 //!     assert_eq!(values, vec![10, 20, 30]);
 //! }
@@ -94,9 +94,9 @@ pub use vector::StructVector;
 
 // mod scalar;
 // pub use scalar::StructScalar;
-use crate::VectorMut;
+use crate::Vector;
 
-impl From<StructVector> for VectorMut {
+impl From<StructVector> for Vector {
     fn from(v: StructVector) -> Self {
         Self::Struct(v)
     }

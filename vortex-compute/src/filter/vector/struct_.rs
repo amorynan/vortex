@@ -4,15 +4,15 @@
 use std::sync::Arc;
 
 use vortex_mask::{Mask, MaskMut};
-use vortex_vector::struct_::{StructVector, StructVector};
+use vortex_vector::struct_::{StructVector, StructVectorMut};
 use vortex_vector::{Vector, VectorMut, VectorOps};
 
 use crate::filter::Filter;
 
 impl<M> Filter<M> for &StructVector
 where
-    for<'a> &'a Vector: Filter<M, Output = Vector>,
     for<'a> &'a Mask: Filter<M, Output = Mask>,
+    for<'a> &'a Vector: Filter<M, Output = Vector>,
 {
     type Output = StructVector;
 
@@ -20,7 +20,7 @@ where
         let fields: Vec<Vector> = self
             .fields()
             .iter()
-            .map(|field| field.filter(selection))
+            .map(|field| Filter::filter(field, selection))
             .collect();
 
         let fields = Arc::new(fields.into_boxed_slice());
@@ -31,10 +31,10 @@ where
     }
 }
 
-impl<M> Filter<M> for &mut StructVector
+impl<M> Filter<M> for &mut StructVectorMut
 where
-    for<'a> &'a mut VectorMut: Filter<M, Output = ()>,
     for<'a> &'a mut MaskMut: Filter<M, Output = ()>,
+    for<'a> &'a mut VectorMut: Filter<M, Output = ()>,
 {
     type Output = ();
 

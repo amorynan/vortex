@@ -9,9 +9,9 @@
 mod vector;
 pub use vector::NullVector;
 
-use crate::VectorMut;
+use crate::Vector;
 
-impl From<NullVector> for VectorMut {
+impl From<NullVector> for Vector {
     fn from(v: NullVector) -> Self {
         Self::Null(v)
     }

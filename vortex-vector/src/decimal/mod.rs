@@ -17,7 +17,7 @@
 //! ```
 //! use vortex_dtype::{PrecisionScale};
 //! use vortex_vector::decimal::{DVector};
-//! use vortex_vector::VectorMutOps;
+//! use vortex_vector::VectorOps;
 //!
 //! // Create a decimal vector with precision=9, scale=2 (e.g., up to 9999999.99).
 //! let ps = PrecisionScale::<i32>::new(9, 2);
@@ -51,7 +51,7 @@
 //! use vortex_dtype::{PrecisionScale};
 //! use vortex_mask::MaskMut;
 //! use vortex_vector::decimal::DVector;
-//! use vortex_vector::VectorMutOps;
+//! use vortex_vector::VectorOps;
 //!
 //! // Create a decimal vector with nulls.
 //! let ps = PrecisionScale::<i32>::new(5, 2); // Up to 999.99.
@@ -80,7 +80,7 @@
 //! ```
 //! use vortex_dtype::{PrecisionScale};
 //! use vortex_vector::decimal::DVector;
-//! use vortex_vector::VectorMutOps;
+//! use vortex_vector::VectorOps;
 //!
 //! // Create two decimal vectors with scale=3 (3 decimal places).
 //! let ps = PrecisionScale::<i64>::new(10, 3);
@@ -116,7 +116,7 @@
 //! ```
 //! use vortex_dtype::{PrecisionScale};
 //! use vortex_vector::decimal::DVector;
-//! use vortex_vector::{VectorMutOps, VectorOps};
+//! use vortex_vector::{VectorOps, VectorOps};
 //!
 //! // Create a mutable decimal vector.
 //! let ps = PrecisionScale::<i128>::new(18, 6);  // High precision with 6 decimal places.
@@ -152,9 +152,9 @@ mod macros;
 
 use vortex_dtype::NativeDecimalType;
 
-use crate::VectorMut;
+use crate::Vector;
 
-impl From<DecimalVector> for VectorMut {
+impl From<DecimalVector> for Vector {
     fn from(v: DecimalVector) -> Self {
         Self::Decimal(v)
     }
@@ -166,7 +166,7 @@ impl<D: NativeDecimalType> From<DVector<D>> for DecimalVector {
     }
 }
 
-impl<D: NativeDecimalType> From<DVector<D>> for VectorMut {
+impl<D: NativeDecimalType> From<DVector<D>> for Vector {
     fn from(val: DVector<D>) -> Self {
         Self::Decimal(DecimalVector::from(val))
     }

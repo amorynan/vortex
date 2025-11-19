@@ -7,7 +7,7 @@ use vortex_buffer::BitBufferMut;
 use vortex_mask::MaskMut;
 
 use crate::bool::BoolVector;
-use crate::{Cow, VectorMutOps};
+use crate::{Cow, VectorOps};
 
 impl FromIterator<Option<bool>> for BoolVector {
     /// Creates a new [`BoolVector`] from an iterator of `Option<bool>` values.
@@ -18,7 +18,7 @@ impl FromIterator<Option<bool>> for BoolVector {
     ///
     /// ```
     /// use vortex_vector::bool::BoolVector;
-    /// use vortex_vector::VectorMutOps;
+    /// use vortex_vector::VectorOps;
     ///
     /// let mut vec = BoolVector::from_iter([Some(true), None, Some(false)]);
     /// assert_eq!(vec.len(), 3);
@@ -66,7 +66,7 @@ impl FromIterator<bool> for BoolVector {
     ///
     /// ```
     /// use vortex_vector::bool::BoolVector;
-    /// use vortex_vector::VectorMutOps;
+    /// use vortex_vector::VectorOps;
     ///
     /// let mut vec = BoolVector::from_iter([true, false, false, true]);
     /// assert_eq!(vec.len(), 4);

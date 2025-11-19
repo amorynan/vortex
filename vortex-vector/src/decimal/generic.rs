@@ -8,7 +8,7 @@ use vortex_dtype::{NativeDecimalType, PrecisionScale};
 use vortex_error::{vortex_bail, VortexExpect, VortexResult};
 use vortex_mask::{Mask, MaskMut};
 
-use crate::{Cow, VectorMutOps};
+use crate::{Cow, VectorOps};
 
 /// A mutable vector of decimal values with fixed precision and scale.
 ///
@@ -194,7 +194,7 @@ impl<D: NativeDecimalType> AsRef<[D]> for DVector<D> {
     }
 }
 
-impl<D: NativeDecimalType> VectorMutOps for DVector<D> {
+impl<D: NativeDecimalType> VectorOps for DVector<D> {
     fn len(&self) -> usize {
         self.elements.len()
     }

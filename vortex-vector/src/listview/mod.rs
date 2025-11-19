@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Definition and implementation of [`ListViewVector`] and [`ListViewVectorMut`].
+//! Definition and implementation of [`ListViewVector`] and [`ListViewVector`].
 //!
 //! A [`ListViewVector`] represents a collection of variable-width lists, where each list can
 //! contain a different number of elements.
@@ -16,11 +16,11 @@
 // pub use vector::ListViewVector;
 
 mod vector_mut;
-pub use vector_mut::ListViewVectorMut;
+pub use vector_mut::ListViewVector;
 
 // mod scalar;
 // pub use scalar::ListViewScalar;
-use crate::VectorMut;
+use crate::Vector;
 
 // impl From<ListViewVector> for Vector {
 //     fn from(v: ListViewVector) -> Self {
@@ -28,8 +28,8 @@ use crate::VectorMut;
 //     }
 // }
 
-impl From<ListViewVectorMut> for VectorMut {
-    fn from(v: ListViewVectorMut) -> Self {
+impl From<ListViewVector> for Vector {
+    fn from(v: ListViewVector) -> Self {
         Self::List(v)
     }
 }

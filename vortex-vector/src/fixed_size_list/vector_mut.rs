@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Definition and implementation of [`FixedSizeListVectorMut`].
+//! Definition and implementation of [`FixedSizeListVector`].
 
 // use std::sync::Arc;
 
@@ -10,7 +10,7 @@ use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
 use vortex_mask::{Mask, MaskMut};
 
 // use crate::fixed_size_list::FixedSizeListVector;
-use crate::{Cow, VectorMut, VectorMutOps};
+use crate::{Cow, Vector, VectorOps};
 
 /// A mutable vector of fixed-size lists.
 ///
@@ -18,7 +18,7 @@ use crate::{Cow, VectorMut, VectorMutOps};
 /// a fixed number of elements together for each list scalar.
 ///
 /// More specifically, each list scalar in the vector has the same number of elements (fixed size),
-/// with all list elements stored contiguously in a child [`VectorMut`].
+/// with all list elements stored contiguously in a child [`Vector`].
 ///
 /// Note that the validity mask tracks which lists are null, not which individual elements are null.
 ///
@@ -29,9 +29,9 @@ use crate::{Cow, VectorMut, VectorMutOps};
 /// - The `validity` mask has length `n`
 /// - Each list `i` occupies `elements[i * list_size..(i+1) * list_size]
 #[derive(Debug)]
-pub struct FixedSizeListVectorMut {
+pub struct FixedSizeListVector {
     /// The mutable child vector of elements.
-    pub(super) elements: Box<VectorMut>,
+    pub(super) elements: Box<Vector>,
 
     /// The size of every list in the vector.
     pub(super) list_size: u32,
@@ -48,8 +48,8 @@ pub struct FixedSizeListVectorMut {
     pub(super) len: usize,
 }
 
-impl FixedSizeListVectorMut {
-    /// Creates a new [`FixedSizeListVectorMut`] from the given `elements` vector, size of each
+impl FixedSizeListVector {
+    /// Creates a new [`FixedSizeListVector`] from the given `elements` vector, size of each
     /// list, and validity mask.
     ///
     /// # Panics
@@ -59,12 +59,12 @@ impl FixedSizeListVectorMut {
     ///
     /// Put another way, the length of the `elements` vector divided by the `list_size` must be
     /// equal to the length of the validity, or this function will panic.
-    pub fn new(elements: Box<VectorMut>, list_size: u32, validity: Cow<Mask>) -> Self {
+    pub fn new(elements: Box<Vector>, list_size: u32, validity: Cow<Mask>) -> Self {
         Self::try_new(elements, list_size, validity)
             .vortex_expect("Failed to create `FixedSizeListVectorMut`")
     }
 
-    /// Tries to create a new [`FixedSizeListVectorMut`] from the given `elements` vector, size of
+    /// Tries to create a new [`FixedSizeListVector`] from the given `elements` vector, size of
     /// each list, and validity mask.
     ///
     /// # Errors
@@ -75,7 +75,7 @@ impl FixedSizeListVectorMut {
     /// Put another way, the length of the `elements` vector divided by the `list_size` must be
     /// equal to the length of the validity.
     pub fn try_new(
-        elements: Box<VectorMut>,
+        elements: Box<Vector>,
         list_size: u32,
         validity: Cow<Mask>,
     ) -> VortexResult<Self> {
@@ -103,7 +103,7 @@ impl FixedSizeListVectorMut {
         })
     }
 
-    /// Tries to create a new [`FixedSizeListVectorMut`] from the given `elements` vector, size of
+    /// Tries to create a new [`FixedSizeListVector`] from the given `elements` vector, size of
     /// each list, and validity mask without validation.
     ///
     /// # Safety
@@ -111,7 +111,7 @@ impl FixedSizeListVectorMut {
     /// The caller must ensure that the length of the `validity` mask multiplied by the `list_size`
     /// is exactly equal to the length of the `elements` vector.
     pub unsafe fn new_unchecked(
-        elements: Box<VectorMut>,
+        elements: Box<Vector>,
         list_size: u32,
         validity: Cow<Mask>,
     ) -> Self {
@@ -129,9 +129,9 @@ impl FixedSizeListVectorMut {
         }
     }
 
-    /// Creates a new [`FixedSizeListVectorMut`] with given element type, list size, and capacity.
+    /// Creates a new [`FixedSizeListVector`] with given element type, list size, and capacity.
     pub fn with_capacity(elem_dtype: &DType, list_size: u32, capacity: usize) -> Self {
-        let elements = Box::new(VectorMut::with_capacity(
+        let elements = Box::new(Vector::with_capacity(
             elem_dtype,
             capacity * list_size as usize,
         ));
@@ -148,13 +148,13 @@ impl FixedSizeListVectorMut {
 
     /// Decomposes the `FixedSizeListVector` into its constituent parts (child elements, list size,
     /// and validity).
-    pub fn into_parts(self) -> (Box<VectorMut>, u32, Cow<Mask>) {
+    pub fn into_parts(self) -> (Box<Vector>, u32, Cow<Mask>) {
         (self.elements, self.list_size, self.validity)
     }
 
     /// Returns the child vector of elements, which represents the contiguous fixed-size lists of
     /// the `FixedSizeListVector`.
-    pub fn elements(&self) -> &VectorMut {
+    pub fn elements(&self) -> &Vector {
         &self.elements
     }
 
@@ -164,7 +164,7 @@ impl FixedSizeListVectorMut {
     }
 }
 
-impl VectorMutOps for FixedSizeListVectorMut {
+impl VectorOps for FixedSizeListVector {
     fn len(&self) -> usize {
         self.len
     }

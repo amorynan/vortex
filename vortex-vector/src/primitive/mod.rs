@@ -17,7 +17,7 @@
 //!
 //! ```
 //! use vortex_vector::primitive::PVector;
-//! use vortex_vector::VectorMutOps;
+//! use vortex_vector::VectorOps;
 //!
 //! // Create with initial capacity for i32 values.
 //! let mut vec = PVector::<i32>::with_capacity(10);
@@ -37,7 +37,7 @@
 //!
 //! ```
 //! use vortex_vector::primitive::PVector;
-//! use vortex_vector::VectorMutOps;
+//! use vortex_vector::VectorOps;
 //!
 //! let mut vec1 = PVector::<i32>::from_iter([1, 2].map(Some));
 //! let vec2 = PVector::<i32>::from_iter([3, 4].map(Some)).freeze();
@@ -55,7 +55,7 @@
 //!
 //! ```
 //! use vortex_vector::primitive::PVector;
-//! use vortex_vector::VectorMutOps;
+//! use vortex_vector::VectorOps;
 //!
 //! let mut vec = PVector::<i64>::from_iter([10, 20, 30, 40, 50].map(Some));
 //!
@@ -73,7 +73,7 @@
 //!
 //! ```
 //! use vortex_vector::primitive::PVector;
-//! use vortex_vector::VectorMutOps;
+//! use vortex_vector::VectorOps;
 //!
 //! // Create a vector with some null values.
 //! let mut vec = PVector::<u32>::from_iter([Some(100), None, Some(200), None]);
@@ -88,7 +88,7 @@
 //!
 //! ```
 //! use vortex_vector::primitive::PVector;
-//! use vortex_vector::{VectorMutOps, VectorOps};
+//! use vortex_vector::{VectorOps, VectorOps};
 //!
 //! let mut vec = PVector::<f32>::from_iter([1.0, 2.0, 3.0].map(Some));
 //!
@@ -114,9 +114,9 @@ mod macros;
 
 use vortex_dtype::NativePType;
 
-use crate::VectorMut;
+use crate::Vector;
 
-impl From<PrimitiveVector> for VectorMut {
+impl From<PrimitiveVector> for Vector {
     fn from(v: PrimitiveVector) -> Self {
         Self::Primitive(v)
     }
@@ -128,7 +128,7 @@ impl<T: NativePType> From<PVector<T>> for PrimitiveVector {
     }
 }
 
-impl<T: NativePType> From<PVector<T>> for VectorMut {
+impl<T: NativePType> From<PVector<T>> for Vector {
     fn from(val: PVector<T>) -> Self {
         Self::Primitive(PrimitiveVector::from(val))
     }

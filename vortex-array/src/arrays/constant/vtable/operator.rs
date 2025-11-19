@@ -11,7 +11,7 @@ use vortex_vector::bool::BoolVector;
 use vortex_vector::decimal::{DVector, DecimalVector};
 use vortex_vector::null::NullVector;
 use vortex_vector::primitive::{PVector, PrimitiveVector};
-use vortex_vector::{VectorMut, VectorMutOps};
+use vortex_vector::{Vector, VectorOps};
 
 use crate::arrays::{ConstantArray, ConstantVTable};
 use crate::execution::{kernel, BatchKernelRef, BindCtx};
@@ -35,7 +35,7 @@ impl OperatorVTable<ConstantVTable> for ConstantVTable {
     }
 }
 
-fn to_vector(scalar: Scalar, len: usize) -> VectorMut {
+fn to_vector(scalar: Scalar, len: usize) -> Vector {
     match scalar.dtype() {
         DType::Null => NullVector::new(len).into(),
         DType::Bool(_) => to_vector_bool(scalar.as_bool(), len).into(),

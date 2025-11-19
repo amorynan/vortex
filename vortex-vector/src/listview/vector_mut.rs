@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Definition and implementation of [`ListViewVectorMut`].
+//! Definition and implementation of [`ListViewVector`].
 
 // use std::sync::Arc;
 
@@ -11,8 +11,8 @@ use vortex_mask::{Mask, MaskMut};
 
 // use super::ListViewVector;
 use crate::primitive::PrimitiveVector;
-use crate::vector_ops::VectorMutOps;
-use crate::{match_each_integer_pvector_mut, Cow, VectorMut};
+use crate::vector_ops::VectorOps;
+use crate::{match_each_integer_pvector_mut, Cow, Vector};
 
 /// A mutable vector of variable-width lists.
 ///
@@ -25,15 +25,15 @@ use crate::{match_each_integer_pvector_mut, Cow, VectorMut};
 ///
 /// # Structure
 ///
-/// - `elements`: The child vector of all list elements, stored as a [`Box<VectorMut>`].
+/// - `elements`: The child vector of all list elements, stored as a [`Box<Vector>`].
 /// - `offsets`: A [`PrimitiveVector`] containing the starting offset of each list in the
 ///   `elements` vector.
 /// - `sizes`: A [`PrimitiveVector`] containing the size (number of elements) of each list.
 /// - `validity`: A [`MaskMut`] indicating which lists are null.
 #[derive(Debug)]
-pub struct ListViewVectorMut {
+pub struct ListViewVector {
     /// The mutable child vector of elements.
-    pub(super) elements: Box<VectorMut>,
+    pub(super) elements: Box<Vector>,
 
     /// Mutable offsets for each list into the elements array.
     ///
@@ -57,8 +57,8 @@ pub struct ListViewVectorMut {
     pub(super) len: usize,
 }
 
-impl ListViewVectorMut {
-    /// Creates a new [`ListViewVectorMut`] from its components.
+impl ListViewVector {
+    /// Creates a new [`ListViewVector`] from its components.
     ///
     /// # Panics
     ///
@@ -72,7 +72,7 @@ impl ListViewVectorMut {
     ///   `elements.len()` (even if the corresponding view is defined as null by the validity
     ///   array).
     pub fn new(
-        elements: Box<VectorMut>,
+        elements: Box<Vector>,
         offsets: PrimitiveVector,
         sizes: PrimitiveVector,
         validity: Cow<Mask>,
@@ -81,7 +81,7 @@ impl ListViewVectorMut {
             .vortex_expect("Failed to create `ListViewVectorMut`")
     }
 
-    /// Attempts to create a new [`ListViewVectorMut`] from its components.
+    /// Attempts to create a new [`ListViewVector`] from its components.
     ///
     /// # Errors
     ///
@@ -95,7 +95,7 @@ impl ListViewVectorMut {
     ///   `elements.len()` (even if the corresponding view is defined as null by the validity
     ///   array).
     pub fn try_new(
-        elements: Box<VectorMut>,
+        elements: Box<Vector>,
         offsets: PrimitiveVector,
         sizes: PrimitiveVector,
         validity: Cow<Mask>,
@@ -142,7 +142,7 @@ impl ListViewVectorMut {
         })
     }
 
-    /// Creates a new [`ListViewVectorMut`] without validation.
+    /// Creates a new [`ListViewVector`] without validation.
     ///
     /// # Safety
     ///
@@ -154,7 +154,7 @@ impl ListViewVectorMut {
     /// - For each `i`, `offsets[i] + sizes[i]` must not overflow and must be `<= elements.len()`
     ///   (even if the corresponding view is defined as null by the validity array).
     pub unsafe fn new_unchecked(
-        elements: Box<VectorMut>,
+        elements: Box<Vector>,
         offsets: PrimitiveVector,
         sizes: PrimitiveVector,
         validity: Cow<Mask>,
@@ -174,11 +174,11 @@ impl ListViewVectorMut {
         }
     }
 
-    /// Creates a new [`ListViewVectorMut`] with the specified capacity.
+    /// Creates a new [`ListViewVector`] with the specified capacity.
     pub fn with_capacity(element_dtype: &DType, capacity: usize) -> Self {
         unsafe {
             Self::new_unchecked(
-                Box::new(VectorMut::with_capacity(element_dtype, 0)),
+                Box::new(Vector::with_capacity(element_dtype, 0)),
                 PrimitiveVector::with_capacity(PType::U64, capacity),
                 PrimitiveVector::with_capacity(PType::U32, capacity),
                 Cow::Mutable(MaskMut::with_capacity(capacity)),
@@ -186,14 +186,14 @@ impl ListViewVectorMut {
         }
     }
 
-    /// Decomposes the [`ListViewVectorMut`] into its constituent parts (child elements, offsets,
+    /// Decomposes the [`ListViewVector`] into its constituent parts (child elements, offsets,
     /// sizes, and validity).
-    pub fn into_parts(self) -> (Box<VectorMut>, PrimitiveVector, PrimitiveVector, Cow<Mask>) {
+    pub fn into_parts(self) -> (Box<Vector>, PrimitiveVector, PrimitiveVector, Cow<Mask>) {
         (self.elements, self.offsets, self.sizes, self.validity)
     }
 
     /// Returns a reference to the elements vector.
-    pub fn elements(&self) -> &VectorMut {
+    pub fn elements(&self) -> &Vector {
         &self.elements
     }
 
@@ -242,7 +242,7 @@ impl ListViewVectorMut {
     }
 }
 
-impl VectorMutOps for ListViewVectorMut {
+impl VectorOps for ListViewVector {
     fn len(&self) -> usize {
         self.len
     }

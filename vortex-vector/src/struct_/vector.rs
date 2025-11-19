@@ -9,7 +9,7 @@ use vortex_dtype::StructFields;
 use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
 use vortex_mask::{Mask, MaskMut};
 
-use crate::{match_vector_pair, Cow, VectorMut, VectorMutOps};
+use crate::{match_vector_pair, Cow, Vector, VectorOps};
 
 /// A mutable vector of struct values (values with named fields).
 ///
@@ -17,8 +17,8 @@ use crate::{match_vector_pair, Cow, VectorMut, VectorMutOps};
 /// to each other (rather than values in the same struct stored next to each other).
 #[derive(Debug)]
 pub struct StructVector {
-    /// The (owned) fields of the `StructVectorMut`, each stored column-wise as a [`VectorMut`].
-    pub(super) fields: Box<[VectorMut]>,
+    /// The (owned) fields of the `StructVectorMut`, each stored column-wise as a [`Vector`].
+    pub(super) fields: Box<[Vector]>,
 
     /// The validity mask (where `true` represents an element is **not** null).
     pub(super) validity: Cow<Mask>,
@@ -39,7 +39,7 @@ impl StructVector {
     ///
     /// - Any field vector has a length that does not match the length of other fields.
     /// - The validity mask length does not match the field length.
-    pub fn new(fields: Box<[VectorMut]>, validity: Cow<Mask>) -> Self {
+    pub fn new(fields: Box<[Vector]>, validity: Cow<Mask>) -> Self {
         Self::try_new(fields, validity).vortex_expect("Failed to create `StructVectorMut`")
     }
 
@@ -51,7 +51,7 @@ impl StructVector {
     ///
     /// - Any field vector has a length that does not match the length of other fields.
     /// - The validity mask length does not match the field length.
-    pub fn try_new(fields: Box<[VectorMut]>, validity: Cow<Mask>) -> VortexResult<Self> {
+    pub fn try_new(fields: Box<[Vector]>, validity: Cow<Mask>) -> VortexResult<Self> {
         let len = validity.len();
 
         // Validate that all fields have the correct length.
@@ -81,7 +81,7 @@ impl StructVector {
     ///
     /// - All field vectors have the same length.
     /// - The validity mask has a length equal to the field length.
-    pub unsafe fn new_unchecked(fields: Box<[VectorMut]>, validity: Cow<Mask>) -> Self {
+    pub unsafe fn new_unchecked(fields: Box<[Vector]>, validity: Cow<Mask>) -> Self {
         let len = validity.len();
 
         if cfg!(debug_assertions) {
@@ -97,9 +97,9 @@ impl StructVector {
 
     /// Creates a new [`StructVector`] with the given fields and capacity.
     pub fn with_capacity(struct_fields: &StructFields, capacity: usize) -> Self {
-        let fields: Vec<VectorMut> = struct_fields
+        let fields: Vec<Vector> = struct_fields
             .fields()
-            .map(|dtype| VectorMut::with_capacity(&dtype, capacity))
+            .map(|dtype| Vector::with_capacity(&dtype, capacity))
             .collect();
 
         let validity = Cow::Mutable(MaskMut::with_capacity(capacity));
@@ -112,12 +112,12 @@ impl StructVector {
     }
 
     /// Decomposes the struct vector into its constituent parts (fields, validity, and length).
-    pub fn into_parts(self) -> (Box<[VectorMut]>, Cow<Mask>, usize) {
+    pub fn into_parts(self) -> (Box<[Vector]>, Cow<Mask>, usize) {
         (self.fields, self.validity, self.len)
     }
 
-    /// Returns the fields of the `StructVectorMut`, each stored column-wise as a [`VectorMut`].
-    pub fn fields(&self) -> &[VectorMut] {
+    /// Returns the fields of the `StructVectorMut`, each stored column-wise as a [`Vector`].
+    pub fn fields(&self) -> &[Vector] {
         self.fields.as_ref()
     }
 
@@ -128,7 +128,7 @@ impl StructVector {
     /// Callers must ensure that any modifications to the field vectors do not violate
     /// the invariants of this type, namely that all field vectors are of the same length
     /// and equal to the length of the validity.
-    pub unsafe fn fields_mut(&mut self) -> &mut [VectorMut] {
+    pub unsafe fn fields_mut(&mut self) -> &mut [Vector] {
         self.fields.as_mut()
     }
 
@@ -161,7 +161,7 @@ impl StructVector {
     }
 }
 
-impl VectorMutOps for StructVector {
+impl VectorOps for StructVector {
     fn len(&self) -> usize {
         self.len
     }
@@ -215,7 +215,7 @@ impl VectorMutOps for StructVector {
     }
 
     fn split_off(&mut self, at: usize) -> Self {
-        let split_fields: Vec<VectorMut> = self
+        let split_fields: Vec<Vector> = self
             .fields
             .iter_mut()
             .map(|field| field.split_off(at))
@@ -250,11 +250,7 @@ impl VectorMutOps for StructVector {
         // Unsplit each field vector.
         let pairs = self.fields.iter_mut().zip(other.fields);
         for (self_mut_vector, other_mut_vec) in pairs {
-            match_vector_pair!(
-                self_mut_vector,
-                other_mut_vec,
-                |a: VectorMut, b: VectorMut| a.unsplit(b)
-            )
+            match_vector_pair!(self_mut_vector, other_mut_vec, |a, b| a.unsplit(b))
         }
 
         self.validity
@@ -273,7 +269,7 @@ mod tests {
     use crate::bool::BoolVector;
     use crate::null::NullVector;
     use crate::primitive::PVector;
-    use crate::VectorMut;
+    use crate::Vector;
 
     #[test]
     fn test_empty_fields() {
@@ -312,6 +308,6 @@ mod tests {
 
         outer.unsplit(second);
         assert_eq!(outer.len(), 4);
-        assert!(matches!(outer.fields[0], VectorMut::Struct(_)));
+        assert!(matches!(outer.fields[0], Vector::Struct(_)));
     }
 }

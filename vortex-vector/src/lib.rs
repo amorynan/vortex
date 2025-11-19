@@ -24,7 +24,7 @@ pub mod struct_;
 // mod scalar_ops;
 
 mod cow;
-mod vector_mut;
+mod vector;
 mod vector_ops;
 
 mod macros;
@@ -35,9 +35,8 @@ pub use cow::{Cow, IntoFrozen, IntoMut};
 // pub use datum::Datum;
 // pub use scalar::Scalar;
 // pub use scalar_ops::ScalarOps;
-// pub use vector::Vector;
-pub use vector_mut::VectorMut;
-pub use vector_ops::VectorMutOps;
+pub use vector::Vector;
+pub use vector_ops::VectorOps;
 // use vortex_dtype::DType;
 
 /*

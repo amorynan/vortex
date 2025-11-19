@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Definition and implementation of [`VectorOps`] and [`VectorMutOps`] for [`Vector`] and
-//! [`VectorMut`], respectively.
-
-// use std::fmt::Debug;
-// use std::ops::RangeBounds;
+//! Definition and implementation of [`VectorOps`] for [`Vector`].
 
 use vortex_mask::Mask;
 
-use crate::{Cow, VectorMut};
+use crate::{Cow, Vector};
 
 // TODO(connor): Add `private::Sealed` back.
-/// Common operations for mutable vectors (all the variants of [`VectorMut`]).
-pub trait VectorMutOps: Into<VectorMut> + Sized {
+/// Common operations for mutable vectors (all the variants of [`Vector`]).
+pub trait VectorOps: Into<Vector> + Sized {
     /// Returns the number of elements in the vector, also referred to as its "length".
     fn len(&self) -> usize;
 

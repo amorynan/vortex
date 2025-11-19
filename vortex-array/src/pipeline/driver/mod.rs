@@ -10,15 +10,15 @@ use std::hash::{BuildHasher, Hash, Hasher};
 
 use itertools::Itertools;
 use vortex_dtype::DType;
-use vortex_error::{VortexResult, vortex_ensure};
+use vortex_error::{vortex_ensure, VortexResult};
 use vortex_mask::Mask;
 use vortex_utils::aliases::hash_map::{HashMap, RandomState};
-use vortex_vector::{Vector, VectorMut, VectorMutOps};
+use vortex_vector::{Vector, Vector, VectorOps};
 
-use crate::pipeline::driver::allocation::{OutputTarget, allocate_vectors};
+use crate::pipeline::driver::allocation::{allocate_vectors, OutputTarget};
 use crate::pipeline::driver::bind::bind_kernels;
 use crate::pipeline::driver::toposort::topological_sort;
-use crate::pipeline::{BitView, Kernel, KernelCtx, N, PipelineInputs};
+use crate::pipeline::{BitView, Kernel, KernelCtx, PipelineInputs, N};
 use crate::{Array, ArrayEq, ArrayHash, ArrayOperator, ArrayRef, ArrayVisitor, Precision};
 
 /// A pipeline driver takes a Vortex array and executes it into a canonical vector.
@@ -236,7 +236,7 @@ impl Pipeline {
     fn execute(&mut self, selection: &Mask) -> VortexResult<Vector> {
         // Start by allocating the output vector.
         let capacity = selection.true_count().next_multiple_of(N);
-        let mut output = VectorMut::with_capacity(&self.dtype, capacity);
+        let mut output = Vector::with_capacity(&self.dtype, capacity);
 
         match selection {
             Mask::AllFalse(_) => {}
@@ -264,11 +264,11 @@ impl Pipeline {
             }
         }
 
-        Ok(output.freeze())
+        Ok(output)
     }
 
     /// Perform a single step of the pipeline.
-    fn step(&mut self, selection: &BitView, output: &mut VectorMut) -> VortexResult<()> {
+    fn step(&mut self, selection: &BitView, output: &mut Vector) -> VortexResult<()> {
         // Loop over the kernels in toposorted execution order.
         for &node_idx in self.exec_order.iter() {
             let kernel = &mut self.kernels[node_idx];

@@ -38,7 +38,7 @@ macro_rules! match_each_dvector {
 ///
 /// [`DecimalVectorMut`]: super::DecimalVector
 #[macro_export]
-macro_rules! match_each_dvector_mut {
+macro_rules! match_each_dvector {
     ($self:expr, | $vec:ident | $body:block) => {{
         match $self {
             $crate::decimal::DecimalVector::D8($vec) => $body,

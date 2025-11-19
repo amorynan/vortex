@@ -9,7 +9,7 @@ use vortex_mask::{Mask, MaskMut};
 
 use crate::binaryview::view::{validate_views, BinaryView};
 use crate::binaryview::BinaryViewType;
-use crate::{Cow, VectorMutOps};
+use crate::{Cow, VectorOps};
 
 // Default capacity for new string data buffers of 2MiB.
 const BUFFER_CAPACITY: usize = 2 * 1024 * 1024;
@@ -227,7 +227,7 @@ impl<T: BinaryViewType> BinaryViewVector<T> {
     ///
     /// ```
     /// # use vortex_vector::binaryview::StringVector;
-    /// # use vortex_vector::VectorMutOps;
+    /// # use vortex_vector::VectorOps;
     /// let mut strings = StringVector::with_capacity(4);
     /// strings.append_values("inlined", 2);
     /// strings.append_nulls(1);
@@ -293,7 +293,7 @@ impl<T: BinaryViewType> BinaryViewVector<T> {
     }
 }
 
-impl<T: BinaryViewType> VectorMutOps for BinaryViewVector<T> {
+impl<T: BinaryViewType> VectorOps for BinaryViewVector<T> {
     fn len(&self) -> usize {
         self.views.len()
     }

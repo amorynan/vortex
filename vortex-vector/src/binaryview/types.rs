@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use vortex_buffer::{BufferString, ByteBuffer};
 
 use crate::binaryview::BinaryViewVector;
-use crate::VectorMut;
+use crate::Vector;
 
 // impl<T: BinaryViewType> From<BinaryViewVector<T>> for Vector {
 //     fn from(value: BinaryViewVector<T>) -> Self {
@@ -16,7 +16,7 @@ use crate::VectorMut;
 //     }
 // }
 
-impl<T: BinaryViewType> From<BinaryViewVector<T>> for VectorMut {
+impl<T: BinaryViewType> From<BinaryViewVector<T>> for Vector {
     fn from(value: BinaryViewVector<T>) -> Self {
         T::upcast(value)
     }

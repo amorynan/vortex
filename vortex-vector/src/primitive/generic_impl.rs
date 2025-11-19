@@ -6,7 +6,7 @@
 use vortex_dtype::NativePType;
 
 use crate::primitive::PVector;
-use crate::VectorMutOps;
+use crate::VectorOps;
 
 /// Point operations for [`PVector`].
 impl<T: NativePType> PVector<T> {

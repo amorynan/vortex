@@ -5,7 +5,7 @@
 
 use vortex_mask::{Mask, MaskMut};
 
-use crate::{Cow, VectorMutOps};
+use crate::{Cow, VectorOps};
 
 /// A mutable vector of null values.
 ///
@@ -29,7 +29,7 @@ impl NullVector {
     }
 }
 
-impl VectorMutOps for NullVector {
+impl VectorOps for NullVector {
     fn len(&self) -> usize {
         self.validity.len()
     }

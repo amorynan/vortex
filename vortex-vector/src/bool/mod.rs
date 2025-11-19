@@ -9,7 +9,7 @@
 //!
 //! ```
 //! use vortex_vector::bool::BoolVector;
-//! use vortex_vector::VectorMutOps;
+//! use vortex_vector::VectorOps;
 //!
 //! let mut vec1 = BoolVector::from_iter([true, false].map(Some));
 //! let vec2 = BoolVector::from_iter([true, true].map(Some)).freeze();
@@ -27,7 +27,7 @@
 //!
 //! ```
 //! use vortex_vector::bool::BoolVector;
-//! use vortex_vector::VectorMutOps;
+//! use vortex_vector::VectorOps;
 //!
 //! let mut vec = BoolVector::from_iter([true, false, true, false, true].map(Some));
 //!
@@ -45,7 +45,7 @@
 //!
 //! ```
 //! use vortex_vector::bool::BoolVector;
-//! use vortex_vector::{VectorMutOps, VectorOps};
+//! use vortex_vector::{VectorOps, VectorOps};
 //!
 //! let mut vec = BoolVector::from_iter([true, false, true].map(Some));
 //!
@@ -62,9 +62,9 @@ pub use vector::BoolVector;
 
 mod iter;
 
-use crate::VectorMut;
+use crate::Vector;
 
-impl From<BoolVector> for VectorMut {
+impl From<BoolVector> for Vector {
     fn from(v: BoolVector) -> Self {
         Self::Bool(v)
     }

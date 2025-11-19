@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Definition of the [`VectorMut`] type, which represents mutable and fully decompressed
+//! Definition of the [`Vector`] type, which represents mutable and fully decompressed
 //! (canonical) array data.
 //!
-//! [`VectorMut`] can be frozen into the [`Vector`] type.
+//! [`Vector`] can be frozen into the [`Vector`] type.
 
 use vortex_dtype::DType;
 use vortex_error::vortex_panic;
@@ -13,24 +13,24 @@ use vortex_mask::Mask;
 use crate::binaryview::{BinaryVector, StringVector};
 use crate::bool::BoolVector;
 use crate::decimal::DecimalVector;
-use crate::fixed_size_list::FixedSizeListVectorMut;
-use crate::listview::ListViewVectorMut;
+use crate::fixed_size_list::FixedSizeListVector;
+use crate::listview::ListViewVector;
 use crate::null::NullVector;
 use crate::primitive::PrimitiveVector;
 use crate::struct_::StructVector;
-use crate::{match_each_vector_mut, match_vector_pair, Cow, VectorMutOps};
+use crate::{match_each_vector_mut, match_vector_pair, Cow, VectorOps};
 
 /// An enum over all kinds of mutable vectors, which represent fully decompressed (canonical) array
 /// data.
 ///
-/// Most of the behavior of `VectorMut` is described by the [`VectorMutOps`] trait. Note that
+/// Most of the behavior of `VectorMut` is described by the [`VectorOps`] trait. Note that
 /// vectors are **always** considered as nullable, and it is the responsibility of the user to not
 /// add any nullable data to a vector they want to keep as non-nullable.
 ///
 /// The immutable equivalent of this type is [`Vector`], which implements the
 /// [`VectorOps`](crate::VectorOps) trait.
 #[derive(Debug)]
-pub enum VectorMut {
+pub enum Vector {
     /// Mutable Null vectors.
     Null(NullVector),
     /// Mutable Boolean vectors.
@@ -54,14 +54,14 @@ pub enum VectorMut {
     /// Mutable Binary vectors.
     Binary(BinaryVector),
     /// Mutable vectors of Lists with variable sizes.
-    List(ListViewVectorMut),
+    List(ListViewVector),
     /// Mutable vectors of Lists with fixed sizes.
-    FixedSizeList(FixedSizeListVectorMut),
+    FixedSizeList(FixedSizeListVector),
     /// Mutable vectors of Struct elements.
     Struct(StructVector),
 }
 
-impl VectorMut {
+impl Vector {
     /// Create a new mutable vector with the given capacity and dtype.
     pub fn with_capacity(dtype: &DType, capacity: usize) -> Self {
         match dtype {
@@ -69,7 +69,7 @@ impl VectorMut {
             DType::Bool(_) => BoolVector::with_capacity(capacity).into(),
             DType::Primitive(ptype, _) => PrimitiveVector::with_capacity(*ptype, capacity).into(),
             DType::FixedSizeList(elem_dtype, list_size, _) => {
-                FixedSizeListVectorMut::with_capacity(elem_dtype, *list_size, capacity).into()
+                FixedSizeListVector::with_capacity(elem_dtype, *list_size, capacity).into()
             }
             DType::Struct(struct_fields, _) => {
                 StructVector::with_capacity(struct_fields, capacity).into()
@@ -79,13 +79,13 @@ impl VectorMut {
             }
             DType::Utf8(..) => StringVector::with_capacity(capacity).into(),
             DType::Binary(..) => BinaryVector::with_capacity(capacity).into(),
-            DType::Extension(ext) => VectorMut::with_capacity(ext.storage_dtype(), capacity),
-            DType::List(..) => ListViewVectorMut::with_capacity(dtype, capacity).into(),
+            DType::Extension(ext) => Vector::with_capacity(ext.storage_dtype(), capacity),
+            DType::List(..) => ListViewVector::with_capacity(dtype, capacity).into(),
         }
     }
 }
 
-impl VectorMutOps for VectorMut {
+impl VectorOps for Vector {
     fn len(&self) -> usize {
         match_each_vector_mut!(self, |v| { v.len() })
     }
@@ -111,7 +111,7 @@ impl VectorMutOps for VectorMut {
     }
 
     fn unsplit(&mut self, other: Self) {
-        match_vector_pair!(self, other, |a: VectorMut, b: VectorMut| a.unsplit(b))
+        match_vector_pair!(self, other, |a, b| a.unsplit(b))
     }
 
     fn ensure_frozen(&mut self) {
@@ -127,10 +127,10 @@ impl VectorMutOps for VectorMut {
     }
 }
 
-impl VectorMut {
+impl Vector {
     /// Returns a reference to the inner [`NullVector`] if `self` is of that variant.
     pub fn as_null_mut(&mut self) -> &mut NullVector {
-        if let VectorMut::Null(v) = self {
+        if let Vector::Null(v) = self {
             return v;
         }
         vortex_panic!("Expected NullVectorMut, got {self:?}");
@@ -138,7 +138,7 @@ impl VectorMut {
 
     /// Returns a reference to the inner [`BoolVector`] if `self` is of that variant.
     pub fn as_bool_mut(&mut self) -> &mut BoolVector {
-        if let VectorMut::Bool(v) = self {
+        if let Vector::Bool(v) = self {
             return v;
         }
         vortex_panic!("Expected BoolVectorMut, got {self:?}");
@@ -146,7 +146,7 @@ impl VectorMut {
 
     /// Returns a reference to the inner [`PrimitiveVector`] if `self` is of that variant.
     pub fn as_primitive_mut(&mut self) -> &mut PrimitiveVector {
-        if let VectorMut::Primitive(v) = self {
+        if let Vector::Primitive(v) = self {
             return v;
         }
         vortex_panic!("Expected PrimitiveVectorMut, got {self:?}");
@@ -154,7 +154,7 @@ impl VectorMut {
 
     /// Returns a reference to the inner [`StringVector`] if `self` is of that variant.
     pub fn as_string_mut(&mut self) -> &mut StringVector {
-        if let VectorMut::String(v) = self {
+        if let Vector::String(v) = self {
             return v;
         }
         vortex_panic!("Expected StringVectorMut, got {self:?}");
@@ -162,23 +162,23 @@ impl VectorMut {
 
     /// Returns a reference to the inner [`BinaryVector`] if `self` is of that variant.
     pub fn as_binary_mut(&mut self) -> &mut BinaryVector {
-        if let VectorMut::Binary(v) = self {
+        if let Vector::Binary(v) = self {
             return v;
         }
         vortex_panic!("Expected BinaryVectorMut, got {self:?}");
     }
 
-    /// Returns a reference to the inner [`ListViewVectorMut`] if `self` is of that variant.
-    pub fn as_list_mut(&mut self) -> &mut ListViewVectorMut {
-        if let VectorMut::List(v) = self {
+    /// Returns a reference to the inner [`ListViewVector`] if `self` is of that variant.
+    pub fn as_list_mut(&mut self) -> &mut ListViewVector {
+        if let Vector::List(v) = self {
             return v;
         }
         vortex_panic!("Expected ListViewVectorMut, got {self:?}");
     }
 
-    /// Returns a reference to the inner [`FixedSizeListVectorMut`] if `self` is of that variant.
-    pub fn as_fixed_size_list_mut(&mut self) -> &mut FixedSizeListVectorMut {
-        if let VectorMut::FixedSizeList(v) = self {
+    /// Returns a reference to the inner [`FixedSizeListVector`] if `self` is of that variant.
+    pub fn as_fixed_size_list_mut(&mut self) -> &mut FixedSizeListVector {
+        if let Vector::FixedSizeList(v) = self {
             return v;
         }
         vortex_panic!("Expected FixedSizeListVectorMut, got {self:?}");
@@ -186,7 +186,7 @@ impl VectorMut {
 
     /// Returns a reference to the inner [`StructVector`] if `self` is of that variant.
     pub fn as_struct_mut(&mut self) -> &mut StructVector {
-        if let VectorMut::Struct(v) = self {
+        if let Vector::Struct(v) = self {
             return v;
         }
         vortex_panic!("Expected StructVectorMut, got {self:?}");
@@ -194,7 +194,7 @@ impl VectorMut {
 
     /// Consumes `self` and returns the inner [`NullVector`] if `self` is of that variant.
     pub fn into_null(self) -> NullVector {
-        if let VectorMut::Null(v) = self {
+        if let Vector::Null(v) = self {
             return v;
         }
         vortex_panic!("Expected NullVectorMut, got {self:?}");
@@ -202,7 +202,7 @@ impl VectorMut {
 
     /// Consumes `self` and returns the inner [`BoolVector`] if `self` is of that variant.
     pub fn into_bool(self) -> BoolVector {
-        if let VectorMut::Bool(v) = self {
+        if let Vector::Bool(v) = self {
             return v;
         }
         vortex_panic!("Expected BoolVectorMut, got {self:?}");
@@ -210,7 +210,7 @@ impl VectorMut {
 
     /// Consumes `self` and returns the inner [`PrimitiveVector`] if `self` is of that variant.
     pub fn into_primitive(self) -> PrimitiveVector {
-        if let VectorMut::Primitive(v) = self {
+        if let Vector::Primitive(v) = self {
             return v;
         }
         vortex_panic!("Expected PrimitiveVectorMut, got {self:?}");
@@ -219,7 +219,7 @@ impl VectorMut {
     /// Consumes `self` and returns the inner [`StringVector`] if `self` is of that variant.
     #[allow(clippy::same_name_method)] // Same as VarBinTypeDowncast
     pub fn into_string(self) -> StringVector {
-        if let VectorMut::String(v) = self {
+        if let Vector::String(v) = self {
             return v;
         }
         vortex_panic!("Expected StringVectorMut, got {self:?}");
@@ -228,24 +228,24 @@ impl VectorMut {
     /// Consumes `self` and returns the inner [`BinaryVector`] if `self` is of that variant.
     #[allow(clippy::same_name_method)] // Same as VarBinTypeDowncast
     pub fn into_binary(self) -> BinaryVector {
-        if let VectorMut::Binary(v) = self {
+        if let Vector::Binary(v) = self {
             return v;
         }
         vortex_panic!("Expected BinaryVectorMut, got {self:?}");
     }
 
-    /// Consumes `self` and returns the inner [`ListViewVectorMut`] if `self` is of that variant.
-    pub fn into_list(self) -> ListViewVectorMut {
-        if let VectorMut::List(v) = self {
+    /// Consumes `self` and returns the inner [`ListViewVector`] if `self` is of that variant.
+    pub fn into_list(self) -> ListViewVector {
+        if let Vector::List(v) = self {
             return v;
         }
         vortex_panic!("Expected ListViewVectorMut, got {self:?}");
     }
 
-    /// Consumes `self` and returns the inner [`FixedSizeListVectorMut`] if `self` is of that
+    /// Consumes `self` and returns the inner [`FixedSizeListVector`] if `self` is of that
     /// variant.
-    pub fn into_fixed_size_list(self) -> FixedSizeListVectorMut {
-        if let VectorMut::FixedSizeList(v) = self {
+    pub fn into_fixed_size_list(self) -> FixedSizeListVector {
+        if let Vector::FixedSizeList(v) = self {
             return v;
         }
         vortex_panic!("Expected FixedSizeListVectorMut, got {self:?}");
@@ -253,7 +253,7 @@ impl VectorMut {
 
     /// Consumes `self` and returns the inner [`StructVector`] if `self` is of that variant.
     pub fn into_struct(self) -> StructVector {
-        if let VectorMut::Struct(v) = self {
+        if let Vector::Struct(v) = self {
             return v;
         }
         vortex_panic!("Expected StructVectorMut, got {self:?}");

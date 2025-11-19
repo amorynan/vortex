@@ -110,10 +110,10 @@ macro_rules! match_each_integer_pvector {
 ///
 /// ```
 /// use vortex_vector::primitive::{PrimitiveVector, PVector};
-/// use vortex_vector::{VectorMutOps, match_each_pvector_mut};
+/// use vortex_vector::{VectorOps, match_each_pvector};
 ///
 /// fn reserve_primitive_space(vector: &mut PrimitiveVector, additional: usize) {
-///     match_each_pvector_mut!(vector, |v| { v.reserve(additional) })
+///     match_each_pvector!(vector, |v| { v.reserve(additional) })
 /// }
 ///
 /// // Works with `U8` mutable primitive vectors.
@@ -130,9 +130,9 @@ macro_rules! match_each_integer_pvector {
 /// Note: The `reserve` method is already provided by the [`VectorMutOps`] trait implementation.
 ///
 /// [`PrimitiveVectorMut`]: crate::primitive::PrimitiveVector
-/// [`VectorMutOps`]: crate::VectorMutOps
+/// [`VectorMutOps`]: crate::VectorOps
 #[macro_export]
-macro_rules! match_each_pvector_mut {
+macro_rules! match_each_pvector {
     ($self:expr, | $vec:ident | $body:block) => {{
         match $self {
             $crate::primitive::PrimitiveVector::U8($vec) => $body,

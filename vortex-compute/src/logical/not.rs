@@ -3,8 +3,8 @@
 
 use std::ops::Not;
 
-use vortex_vector::bool::{BoolVector, BoolVector};
 use vortex_vector::VectorOps;
+use vortex_vector::bool::{BoolVector, BoolVectorMut};
 
 use crate::logical::LogicalNot;
 
@@ -30,13 +30,13 @@ impl LogicalNot for BoolVector {
     }
 }
 
-impl LogicalNot for BoolVector {
-    type Output = BoolVector;
+impl LogicalNot for BoolVectorMut {
+    type Output = BoolVectorMut;
 
     fn not(self) -> <Self as LogicalNot>::Output {
         let (bits, validity) = self.into_parts();
         // SAFETY: we did not change the length of capacity
-        unsafe { BoolVector::new_unchecked(bits.not(), validity) }
+        unsafe { BoolVectorMut::new_unchecked(bits.not(), validity) }
     }
 }
 

@@ -15,7 +15,7 @@ pub use vector::*;
 pub use view::*;
 use vortex_error::vortex_panic;
 
-use crate::VectorMut;
+use crate::Vector;
 
 // mod scalar;
 mod types;
@@ -31,32 +31,32 @@ pub type StringVector = BinaryViewVector<StringType>;
 // /// Type alias for UTF-8 variable-length string scalars.
 // pub type StringScalar = BinaryViewScalar<StringType>;
 
-impl BinaryViewDowncast for VectorMut {
+impl BinaryViewDowncast for Vector {
     type Output<T: BinaryViewType> = BinaryViewVector<T>;
 
     fn into_binary(self) -> Self::Output<BinaryType> {
-        if let VectorMut::Binary(v) = self {
+        if let Vector::Binary(v) = self {
             return v;
         }
         vortex_panic!("Expected BinaryVector, got {self:?}");
     }
 
     fn into_string(self) -> Self::Output<StringType> {
-        if let VectorMut::String(v) = self {
+        if let Vector::String(v) = self {
             return v;
         }
         vortex_panic!("Expected StringVector, got {self:?}");
     }
 }
 
-impl BinaryViewTypeUpcast for VectorMut {
+impl BinaryViewTypeUpcast for Vector {
     type Input<T: BinaryViewType> = BinaryViewVector<T>;
 
     fn from_binary(input: Self::Input<BinaryType>) -> Self {
-        VectorMut::Binary(input)
+        Vector::Binary(input)
     }
 
     fn from_string(input: Self::Input<StringType>) -> Self {
-        VectorMut::String(input)
+        Vector::String(input)
     }
 }

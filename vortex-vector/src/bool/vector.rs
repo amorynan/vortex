@@ -7,7 +7,7 @@ use vortex_buffer::{BitBuffer, BitBufferMut};
 use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
 use vortex_mask::{Mask, MaskMut};
 
-use crate::{Cow, VectorMutOps};
+use crate::{Cow, VectorOps};
 
 /// A vector of boolean values.
 #[derive(Debug, Clone)]
@@ -87,7 +87,7 @@ impl BoolVector {
     }
 }
 
-impl VectorMutOps for BoolVector {
+impl VectorOps for BoolVector {
     fn len(&self) -> usize {
         debug_assert!(self.validity.len() == self.bits.len());
 

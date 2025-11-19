@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Helper macros for working with the different variants of [`Vector`](crate::Vector) and
-//! [`VectorMut`](crate::VectorMut).
+//! Helper macros for working with the different variants of [`Vector`](crate::Vector).
 
-/*
 /// Matches on all variants of [`Vector`] and executes the same code for each variant branch.
 ///
 /// This macro eliminates repetitive match statements when implementing operations that need to work
@@ -53,7 +51,6 @@ macro_rules! match_each_vector {
         }
     }};
 }
-*/
 
 /// Matches on all variants of [`VectorMut`] and executes the same code for each variant branch.
 ///
@@ -63,73 +60,43 @@ macro_rules! match_each_vector {
 /// # Examples
 ///
 /// ```
-/// use vortex_vector::VectorMut;
+/// use vortex_vector::Vector;
 /// use vortex_vector::bool::BoolVector;
 /// use vortex_vector::null::NullVector;
-/// use vortex_vector::{VectorMutOps, match_each_vector_mut};
+/// use vortex_vector::{VectorOps, match_each_vector_mut};
 ///
-/// fn reserve_space(vector: &mut VectorMut, additional: usize) {
+/// fn reserve_space(vector: &mut Vector, additional: usize) {
 ///     match_each_vector_mut!(vector, |v| { v.reserve(additional) })
 /// }
 ///
 /// // Works with `Null` mutable vectors.
-/// let mut null_vec: VectorMut = NullVector::new(5).into();
+/// let mut null_vec: Vector = NullVector::new(5).into();
 /// reserve_space(&mut null_vec, 10);
 /// assert!(null_vec.capacity() >= 15);
 ///
 /// // Works with `Bool` mutable vectors.
-/// let mut bool_vec: VectorMut = BoolVector::from_iter([true, false].map(Some)).into();
+/// let mut bool_vec: Vector = BoolVector::from_iter([true, false].map(Some)).into();
 /// reserve_space(&mut bool_vec, 5);
 /// assert!(bool_vec.capacity() >= 7);
 /// ```
 ///
 /// Note: The `reserve` method is already provided by the [`VectorMutOps`] trait implementation.
 ///
-/// [`VectorMut`]: crate::VectorMut
-/// [`VectorMutOps`]: crate::VectorMutOps
+/// [`VectorMut`]: crate::Vector
+/// [`VectorMutOps`]: crate::VectorOps
 #[macro_export]
 macro_rules! match_each_vector_mut {
     ($self:expr, | $vec:ident | $body:block) => {{
         match $self {
-            $crate::VectorMut::Null($vec) => $body,
-            $crate::VectorMut::Bool($vec) => $body,
-            $crate::VectorMut::Decimal($vec) => $body,
-            $crate::VectorMut::Primitive($vec) => $body,
-            $crate::VectorMut::String($vec) => $body,
-            $crate::VectorMut::Binary($vec) => $body,
-            $crate::VectorMut::List($vec) => $body,
-            $crate::VectorMut::FixedSizeList($vec) => $body,
-            $crate::VectorMut::Struct($vec) => $body,
-        }
-    }};
-}
-
-/// Internal macro to generate match arms for vector pairs.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __match_vector_pair_arms {
-    (
-        $left:expr,
-        $right:expr,
-        $enum_left:ident,
-        $enum_right:ident,
-        $a:ident,
-        $b:ident,
-        $body:expr
-    ) => {{
-        match ($left, $right) {
-            ($crate::$enum_left::Null($a), $crate::$enum_right::Null($b)) => $body,
-            ($crate::$enum_left::Bool($a), $crate::$enum_right::Bool($b)) => $body,
-            ($crate::$enum_left::Decimal($a), $crate::$enum_right::Decimal($b)) => $body,
-            ($crate::$enum_left::Primitive($a), $crate::$enum_right::Primitive($b)) => $body,
-            ($crate::$enum_left::String($a), $crate::$enum_right::String($b)) => $body,
-            ($crate::$enum_left::Binary($a), $crate::$enum_right::Binary($b)) => $body,
-            ($crate::$enum_left::List($a), $crate::$enum_right::List($b)) => $body,
-            ($crate::$enum_left::FixedSizeList($a), $crate::$enum_right::FixedSizeList($b)) => {
-                $body
-            }
-            ($crate::$enum_left::Struct($a), $crate::$enum_right::Struct($b)) => $body,
-            _ => ::vortex_error::vortex_panic!("Mismatched vector types"),
+            $crate::Vector::Null($vec) => $body,
+            $crate::Vector::Bool($vec) => $body,
+            $crate::Vector::Decimal($vec) => $body,
+            $crate::Vector::Primitive($vec) => $body,
+            $crate::Vector::String($vec) => $body,
+            $crate::Vector::Binary($vec) => $body,
+            $crate::Vector::List($vec) => $body,
+            $crate::Vector::FixedSizeList($vec) => $body,
+            $crate::Vector::Struct($vec) => $body,
         }
     }};
 }
@@ -148,16 +115,16 @@ macro_rules! __match_vector_pair_arms {
 /// # Examples
 ///
 /// ```
-/// use vortex_vector::{Vector, VectorMut, VectorMutOps, match_vector_pair};
+/// use vortex_vector::{Vector, Vector, VectorOps, match_vector_pair};
 /// use vortex_vector::bool::{BoolVector, BoolVector};
 ///
-/// fn extend_vector(left: &mut VectorMut, right: &Vector) {
+/// fn extend_vector(left: &mut Vector, right: &Vector) {
 ///     match_vector_pair!(left, right, |a: VectorMut, b: Vector| {
 ///         a.extend_from_vector(b);
 ///     })
 /// }
 ///
-/// let mut mut_vec: VectorMut = BoolVector::from_iter([true, false, true]).into();
+/// let mut mut_vec: Vector = BoolVector::from_iter([true, false, true]).into();
 /// let vec: Vector = BoolVector::from_iter([false, true]).freeze().into();
 ///
 /// extend_vector(&mut mut_vec, &vec);
@@ -167,17 +134,17 @@ macro_rules! __match_vector_pair_arms {
 /// Note that the vectors can also be owned:
 ///
 /// ```
-/// use vortex_vector::{Vector, VectorMut, VectorMutOps, match_vector_pair};
+/// use vortex_vector::{Vector, Vector, VectorOps, match_vector_pair};
 /// use vortex_vector::bool::{BoolVector, BoolVector};
 ///
-/// fn extend_vector_owned(mut dest: VectorMut, src: Vector) -> VectorMut {
+/// fn extend_vector_owned(mut dest: Vector, src: Vector) -> Vector {
 ///     match_vector_pair!(&mut dest, src, |a: VectorMut, b: Vector| {
 ///         a.extend_from_vector(&b);
 ///         dest
 ///     })
 /// }
 ///
-/// let mut_vec: VectorMut = BoolVector::from_iter([true, false, true]).into();
+/// let mut_vec: Vector = BoolVector::from_iter([true, false, true]).into();
 /// let vec: Vector = BoolVector::from_iter([false, true]).freeze().into();
 ///
 /// let new_bool_mut = extend_vector_owned(mut_vec, vec);
@@ -185,8 +152,18 @@ macro_rules! __match_vector_pair_arms {
 /// ```
 #[macro_export] // DO NOT ADD `#[rustfmt::skip]`!!! https://github.com/rust-lang/rust/pull/52234#issuecomment-903419099
 macro_rules! match_vector_pair {
-    // ($left:expr, $right:expr, | $a:ident : Vector, $b:ident : Vector | $body:expr) => {{ $crate::__match_vector_pair_arms!($left, $right, Vector, Vector, $a, $b, $body) }};
-    // ($left:expr, $right:expr, | $a:ident : Vector, $b:ident : VectorMut | $body:expr) => {{ $crate::__match_vector_pair_arms!($left, $right, Vector, VectorMut, $a, $b, $body) }};
-    // ($left:expr, $right:expr, | $a:ident : VectorMut, $b:ident : Vector | $body:expr) => {{ $crate::__match_vector_pair_arms!($left, $right, VectorMut, Vector, $a, $b, $body) }};
-    ($left:expr, $right:expr, | $a:ident : VectorMut, $b:ident : VectorMut | $body:expr) => {{ $crate::__match_vector_pair_arms!($left, $right, VectorMut, VectorMut, $a, $b, $body) }};
+    ($left:expr,$right:expr,|$a:ident,$b:ident |$body:expr) => {{
+        match ($left, $right) {
+            ($crate::Vector::Null($a), $crate::Vector::Null($b)) => $body,
+            ($crate::Vector::Bool($a), $crate::Vector::Bool($b)) => $body,
+            ($crate::Vector::Decimal($a), $crate::Vector::Decimal($b)) => $body,
+            ($crate::Vector::Primitive($a), $crate::Vector::Primitive($b)) => $body,
+            ($crate::Vector::String($a), $crate::Vector::String($b)) => $body,
+            ($crate::Vector::Binary($a), $crate::Vector::Binary($b)) => $body,
+            ($crate::Vector::List($a), $crate::Vector::List($b)) => $body,
+            ($crate::Vector::FixedSizeList($a), $crate::Vector::FixedSizeList($b)) => $body,
+            ($crate::Vector::Struct($a), $crate::Vector::Struct($b)) => $body,
+            _ => ::vortex_error::vortex_panic!("Mismatched vector types"),
+        }
+    }};
 }

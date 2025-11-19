@@ -6,7 +6,7 @@
 use vortex_dtype::NativePType;
 
 use crate::primitive::PVector;
-use crate::VectorMutOps;
+use crate::VectorOps;
 
 impl<T: NativePType> Extend<Option<T>> for PVector<T> {
     /// Extends the vector from an iterator of optional values.
@@ -17,7 +17,7 @@ impl<T: NativePType> Extend<Option<T>> for PVector<T> {
     ///
     /// ```
     /// use vortex_vector::primitive::PVector;
-    /// use vortex_vector::{VectorMutOps, VectorOps};
+    /// use vortex_vector::{VectorOps, VectorOps};
     ///
     /// let mut vec = PVector::from_iter([Some(1i32), None]);
     /// vec.extend([Some(3), None, Some(5)]);
@@ -97,7 +97,7 @@ impl<T: NativePType> FromIterator<T> for PVector<T> {
     ///
     /// ```
     /// use vortex_vector::primitive::PVector;
-    /// use vortex_vector::VectorMutOps;
+    /// use vortex_vector::VectorOps;
     ///
     /// let mut vec = PVector::from_iter([1i32, 2, 3, 4]);
     /// assert_eq!(vec.len(), 4);

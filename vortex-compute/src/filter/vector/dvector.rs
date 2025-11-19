@@ -4,8 +4,8 @@
 use vortex_buffer::{Buffer, BufferMut};
 use vortex_dtype::NativeDecimalType;
 use vortex_mask::{Mask, MaskMut};
-use vortex_vector::decimal::{DVector, DVector};
 use vortex_vector::VectorOps;
+use vortex_vector::decimal::{DVector, DVectorMut};
 
 use crate::filter::Filter;
 
@@ -24,7 +24,7 @@ where
     }
 }
 
-impl<M, D: NativeDecimalType> Filter<M> for &mut DVector<D>
+impl<M, D: NativeDecimalType> Filter<M> for &mut DVectorMut<D>
 where
     for<'a> &'a mut BufferMut<D>: Filter<M, Output = ()>,
     for<'a> &'a mut MaskMut: Filter<M, Output = ()>,

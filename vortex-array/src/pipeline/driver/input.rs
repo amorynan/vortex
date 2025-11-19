@@ -2,19 +2,19 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use vortex_error::{VortexExpect, VortexResult};
-use vortex_vector::{VectorMut, VectorMutOps, VectorOps};
+use vortex_vector::{Vector, VectorOps, VectorOps};
 
 use crate::pipeline::{BitView, Kernel, KernelCtx, N};
 
 /// A kernel that feeds a batch vector into the pipeline in chunks of size `N` with zero-copy.
 pub(super) struct InputKernel {
     // The batch vector to be fed into the pipeline.
-    batch: Option<VectorMut>,
+    batch: Option<Vector>,
 }
 
 impl InputKernel {
     /// Create a new input kernel with the given batch vector.
-    pub(super) fn new(batch: VectorMut) -> Self {
+    pub(super) fn new(batch: Vector) -> Self {
         Self { batch: Some(batch) }
     }
 }
@@ -24,7 +24,7 @@ impl Kernel for InputKernel {
         &mut self,
         _ctx: &KernelCtx,
         selection: &BitView,
-        out: &mut VectorMut,
+        out: &mut Vector,
     ) -> VortexResult<()> {
         let mut batch = self
             .batch
@@ -72,7 +72,7 @@ impl Kernel for InputKernel {
 
 #[cfg(test)]
 mod test {
-    use vortex_buffer::{BitBuffer, bitbuffer, buffer};
+    use vortex_buffer::{bitbuffer, buffer, BitBuffer};
     use vortex_dtype::PTypeDowncastExt;
     use vortex_mask::Mask;
 

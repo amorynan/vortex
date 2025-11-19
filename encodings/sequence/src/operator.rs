@@ -11,7 +11,7 @@ use vortex_dtype::{match_each_native_ptype, NativePType};
 use vortex_error::{VortexExpect, VortexResult};
 use vortex_mask::AllOr;
 use vortex_vector::primitive::PVector;
-use vortex_vector::{Vector, VectorMutOps};
+use vortex_vector::{Vector, VectorOps};
 
 use crate::{SequenceArray, SequenceVTable};
 

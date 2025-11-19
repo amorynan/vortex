@@ -11,7 +11,7 @@ use vortex_error::vortex_panic;
 use vortex_mask::Mask;
 
 use crate::decimal::DVector;
-use crate::{match_each_dvector_mut, Cow, VectorMutOps};
+use crate::{match_each_dvector, Cow, VectorOps};
 
 /// An enum over all supported decimal mutable vector types.
 #[derive(Clone, Debug)]
@@ -53,41 +53,41 @@ impl DecimalVector {
     }
 }
 
-impl VectorMutOps for DecimalVector {
+impl VectorOps for DecimalVector {
     fn len(&self) -> usize {
-        match_each_dvector_mut!(self, |d| { d.len() })
+        match_each_dvector!(self, |d| { d.len() })
     }
 
     fn validity(&self) -> &Cow<Mask> {
-        match_each_dvector_mut!(self, |d| { d.validity() })
+        match_each_dvector!(self, |d| { d.validity() })
     }
 
     unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
-        unsafe { match_each_dvector_mut!(self, |d| { d.validity_mut() }) }
+        unsafe { match_each_dvector!(self, |d| { d.validity_mut() }) }
     }
 
     fn clear(&mut self) {
-        match_each_dvector_mut!(self, |d| { d.clear() })
+        match_each_dvector!(self, |d| { d.clear() })
     }
 
     fn truncate(&mut self, len: usize) {
-        match_each_dvector_mut!(self, |d| { d.truncate(len) })
+        match_each_dvector!(self, |d| { d.truncate(len) })
     }
 
     fn append_zeros(&mut self, n: usize) {
-        match_each_dvector_mut!(self, |d| { d.append_zeros(n) })
+        match_each_dvector!(self, |d| { d.append_zeros(n) })
     }
 
     fn append_nulls(&mut self, n: usize) {
-        match_each_dvector_mut!(self, |d| { d.append_nulls(n) })
+        match_each_dvector!(self, |d| { d.append_nulls(n) })
     }
 
     fn ensure_frozen(&mut self) {
-        match_each_dvector_mut!(self, |d| { d.ensure_frozen() })
+        match_each_dvector!(self, |d| { d.ensure_frozen() })
     }
 
     fn split_off(&mut self, at: usize) -> Self {
-        match_each_dvector_mut!(self, |d| { d.split_off(at).into() })
+        match_each_dvector!(self, |d| { d.split_off(at).into() })
     }
 
     fn unsplit(&mut self, other: Self) {

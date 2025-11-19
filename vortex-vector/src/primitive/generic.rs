@@ -9,7 +9,7 @@ use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
 use vortex_mask::{Mask, MaskMut};
 
 // use crate::primitive::PVector;
-use crate::{Cow, VectorMutOps};
+use crate::{Cow, VectorOps};
 
 /// A mutable vector of generic primitive values.
 ///
@@ -99,7 +99,7 @@ impl<T> PVector<T> {
     }
 }
 
-impl<T: NativePType> VectorMutOps for PVector<T> {
+impl<T: NativePType> VectorOps for PVector<T> {
     fn len(&self) -> usize {
         self.elements.len()
     }

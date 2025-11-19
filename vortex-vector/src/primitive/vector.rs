@@ -9,7 +9,7 @@ use vortex_error::vortex_panic;
 use vortex_mask::Mask;
 
 use crate::primitive::PVector;
-use crate::{match_each_pvector_mut, Cow, VectorMutOps};
+use crate::{match_each_pvector, Cow, VectorOps};
 
 /// A mutable vector of primitive values.
 ///
@@ -81,41 +81,41 @@ impl PrimitiveVector {
     }
 }
 
-impl VectorMutOps for PrimitiveVector {
+impl VectorOps for PrimitiveVector {
     fn len(&self) -> usize {
-        match_each_pvector_mut!(self, |v| { v.len() })
+        match_each_pvector!(self, |v| { v.len() })
     }
 
     fn validity(&self) -> &Cow<Mask> {
-        match_each_pvector_mut!(self, |v| { v.validity() })
+        match_each_pvector!(self, |v| { v.validity() })
     }
 
     unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
-        unsafe { match_each_pvector_mut!(self, |v| { v.validity_mut() }) }
+        unsafe { match_each_pvector!(self, |v| { v.validity_mut() }) }
     }
 
     fn clear(&mut self) {
-        match_each_pvector_mut!(self, |v| { v.clear() })
+        match_each_pvector!(self, |v| { v.clear() })
     }
 
     fn truncate(&mut self, len: usize) {
-        match_each_pvector_mut!(self, |v| { v.truncate(len) })
+        match_each_pvector!(self, |v| { v.truncate(len) })
     }
 
     fn append_zeros(&mut self, n: usize) {
-        match_each_pvector_mut!(self, |v| { v.append_zeros(n) })
+        match_each_pvector!(self, |v| { v.append_zeros(n) })
     }
 
     fn append_nulls(&mut self, n: usize) {
-        match_each_pvector_mut!(self, |v| { v.append_nulls(n) })
+        match_each_pvector!(self, |v| { v.append_nulls(n) })
     }
 
     fn ensure_frozen(&mut self) {
-        match_each_pvector_mut!(self, |v| { v.ensure_frozen() })
+        match_each_pvector!(self, |v| { v.ensure_frozen() })
     }
 
     fn split_off(&mut self, at: usize) -> Self {
-        match_each_pvector_mut!(self, |v| { v.split_off(at).into() })
+        match_each_pvector!(self, |v| { v.split_off(at).into() })
     }
 
     fn unsplit(&mut self, other: Self) {
@@ -349,7 +349,7 @@ impl<'a> PTypeDowncast for &'a mut PrimitiveVector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::VectorMutOps;
+    use crate::VectorOps;
 
     #[test]
     fn test_from_iter_with_options() {

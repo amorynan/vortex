@@ -11,7 +11,7 @@ use vortex_dtype::{match_each_integer_ptype, PTypeDowncastExt, PhysicalPType};
 use vortex_error::VortexResult;
 use vortex_mask::Mask;
 use vortex_vector::primitive::PVector;
-use vortex_vector::{VectorMut, VectorMutOps};
+use vortex_vector::{Vector, VectorOps};
 
 use crate::BitPackedArray;
 
@@ -121,7 +121,7 @@ impl<BP: PhysicalPType<Physical: BitPacking>> Kernel for AlignedBitPackedKernel<
         &mut self,
         _ctx: &KernelCtx,
         selection: &BitView,
-        out: &mut VectorMut,
+        out: &mut Vector,
     ) -> VortexResult<()> {
         let output_vector: &mut PVector<BP::Physical> = out.as_primitive_mut().downcast();
         debug_assert!(output_vector.is_empty());
