@@ -5,7 +5,7 @@ use vortex_dtype::half::f16;
 use vortex_vector::match_each_pvector;
 use vortex_vector::primitive::{PVector, PrimitiveVector};
 
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 
 impl<M: FilterMask> Filter<M> for &PrimitiveVector
 where
@@ -28,23 +28,23 @@ where
     }
 }
 
-impl<M: FilterMask> Filter<M> for &mut PrimitiveVector
+impl<M: FilterMask> FilterInPlace<M> for PrimitiveVector
 where
-    for<'a> &'a mut PVector<i8>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVector<i16>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVector<i32>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVector<i64>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVector<u8>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVector<u16>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVector<u32>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVector<u64>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVector<f16>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVector<f32>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVector<f64>: Filter<M, Output = ()>,
+    PVector<i8>: FilterInPlace<M>,
+    PVector<i16>: FilterInPlace<M>,
+    PVector<i32>: FilterInPlace<M>,
+    PVector<i64>: FilterInPlace<M>,
+    PVector<u8>: FilterInPlace<M>,
+    PVector<u16>: FilterInPlace<M>,
+    PVector<u32>: FilterInPlace<M>,
+    PVector<u64>: FilterInPlace<M>,
+    PVector<f16>: FilterInPlace<M>,
+    PVector<f32>: FilterInPlace<M>,
+    PVector<f64>: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) -> Self::Output {
-        match_each_pvector!(self, |v| { Filter::<M>::filter(v, selection) })
+    fn filter_in_place(&mut self, selection: &M) {
+        match_each_pvector!(self, |v| {
+            FilterInPlace::<M>::filter_in_place(v, selection)
+        })
     }
 }

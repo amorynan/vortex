@@ -63,9 +63,9 @@ mod tests {
     use vortex_dtype::PTypeDowncast;
     use vortex_vector::VectorOps;
 
-    use crate::IntoArray;
     use crate::arrays::{BoolArray, MaskedArray, PrimitiveArray};
     use crate::validity::Validity;
+    use crate::IntoArray;
 
     #[test]
     fn test_masked_pushdown() {
@@ -83,7 +83,10 @@ mod tests {
         assert!(result.dtype().is_nullable());
 
         let vector = result.execute().unwrap().into_primitive().into_u32();
-        assert_eq!(vector.elements(), &buffer![0, 1, 2, 3]);
-        assert_eq!(vector.validity().to_bit_buffer(), bitbuffer![0 1 0 1]);
+        assert_eq!(vector.elements().ensure_frozen(), &buffer![0, 1, 2, 3]);
+        assert_eq!(
+            vector.validity().ensure_frozen().to_bit_buffer(),
+            bitbuffer![0 1 0 1]
+        );
     }
 }

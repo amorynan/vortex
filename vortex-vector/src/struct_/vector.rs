@@ -171,7 +171,7 @@ impl VectorOps for StructVector {
     }
 
     unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
-        unsafe { &mut self.validity }
+        &mut self.validity
     }
 
     fn clear(&mut self) {

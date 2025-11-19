@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use crate::filter::slice::FILTER_SLICES_SELECTIVITY_THRESHOLD;
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 use vortex_buffer::{BitView, Buffer, BufferMut};
 use vortex_mask::{Mask, MaskIter};
 use vortex_vector::Cow;
@@ -21,30 +21,29 @@ where
     }
 }
 
-impl<M: FilterMask, T> Filter<M> for &mut Cow<Buffer<T>>
+impl<M: FilterMask, T> FilterInPlace<M> for Cow<Buffer<T>>
 where
     for<'a> &'a [T]: Filter<M, Output = Buffer<T>>,
-    for<'a> &'a mut BufferMut<T>: Filter<M, Output = ()>,
+    BufferMut<T>: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) {
+    fn filter_in_place(&mut self, selection: &M) {
         match self.try_mut() {
             Ok(mutable) => {
-                mutable.filter(selection);
+                mutable.filter_in_place(selection);
             }
             Err(frozen) => {
                 let filtered = frozen.as_slice().filter(selection);
                 *self = Cow::Frozen(filtered);
             }
         }
+        debug_assert_eq!(self.len(), selection.true_count())
     }
 }
 
 impl<M: FilterMask, T: Copy> Filter<M> for Buffer<T>
 where
     for<'a> &'a Buffer<T>: Filter<M, Output = Buffer<T>>,
-    for<'a> &'a mut BufferMut<T>: Filter<M, Output = ()>,
+    BufferMut<T>: FilterInPlace<M>,
 {
     type Output = Self;
 
@@ -52,7 +51,7 @@ where
         // If we have exclusive access, we can perform the filter in place.
         match self.try_into_mut() {
             Ok(mut buffer_mut) => {
-                (&mut buffer_mut).filter(selection_mask);
+                buffer_mut.filter_in_place(selection_mask);
                 buffer_mut.freeze()
             }
             // Otherwise, allocate a new buffer and fill it in (delegate to the `&Buffer` impl).
@@ -109,15 +108,14 @@ where
     }
 }
 
-impl<M: FilterMask, T> Filter<M> for &mut BufferMut<T>
+impl<M: FilterMask, T> FilterInPlace<M> for BufferMut<T>
 where
-    for<'a> &'a mut [T]: Filter<M, Output = &'a mut [T]>,
+    [T]: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection_mask: &M) -> Self::Output {
-        let true_count = self.as_mut_slice().filter(selection_mask).len();
-        self.truncate(true_count);
+    fn filter_in_place(&mut self, selection: &M) {
+        self.as_mut_slice().filter_in_place(selection);
+        self.truncate(selection.true_count());
+        debug_assert_eq!(self.len(), selection.true_count());
     }
 }
 

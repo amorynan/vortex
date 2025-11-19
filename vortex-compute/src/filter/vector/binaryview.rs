@@ -6,7 +6,7 @@ use vortex_mask::Mask;
 use vortex_vector::binaryview::{BinaryView, BinaryViewType, BinaryViewVector};
 use vortex_vector::{Cow, VectorOps};
 
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 
 impl<M: FilterMask, T: BinaryViewType> Filter<M> for &BinaryViewVector<T>
 where
@@ -30,19 +30,17 @@ where
     }
 }
 
-impl<M: FilterMask, T: BinaryViewType> Filter<M> for &mut BinaryViewVector<T>
+impl<M: FilterMask, T: BinaryViewType> FilterInPlace<M> for BinaryViewVector<T>
 where
-    for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,
-    for<'a> &'a mut Cow<Buffer<BinaryView>>: Filter<M, Output = ()>,
+    Cow<Mask>: FilterInPlace<M>,
+    Cow<Buffer<BinaryView>>: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) -> Self::Output {
+    fn filter_in_place(&mut self, selection: &M) {
         // SAFETY: views and validity filtered by the same mask will have
         //  same resultant length.
         unsafe {
-            self.views_mut().filter(selection);
-            self.validity_mut().filter(selection);
+            self.views_mut().filter_in_place(selection);
+            self.validity_mut().filter_in_place(selection);
         }
     }
 }

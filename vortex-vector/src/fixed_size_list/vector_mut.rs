@@ -146,6 +146,10 @@ impl FixedSizeListVector {
         }
     }
 
+    pub fn into_parts(self) -> (Box<Vector>, u32, Cow<Mask>) {
+        (self.elements, self.list_size, self.validity)
+    }
+
     /// Decomposes the `FixedSizeListVector` into its constituent parts (child elements, list size,
     /// and validity).
     pub fn into_frozen_parts(self) -> (Box<Vector>, u32, Mask) {
@@ -195,7 +199,7 @@ impl VectorOps for FixedSizeListVector {
     //     }
     // }
 
-    fn split_off(&mut self, at: usize) -> Self {
+    fn split_off(&mut self, _at: usize) -> Self {
         // assert!(
         //     at <= self.capacity(),
         //     "split_off out of bounds: {} > {}",
@@ -243,11 +247,11 @@ impl VectorOps for FixedSizeListVector {
         todo!()
     }
 
-    fn append_zeros(&mut self, n: usize) {
+    fn append_zeros(&mut self, _n: usize) {
         todo!()
     }
 
-    fn append_nulls(&mut self, n: usize) {
+    fn append_nulls(&mut self, _n: usize) {
         todo!()
     }
 }

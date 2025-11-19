@@ -6,7 +6,7 @@ use vortex_mask::Mask;
 use vortex_vector::bool::BoolVector;
 use vortex_vector::{Cow, VectorOps};
 
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 
 impl<M: FilterMask> Filter<M> for &BoolVector
 where
@@ -26,15 +26,13 @@ where
     }
 }
 
-impl<M: FilterMask> Filter<M> for &mut BoolVector
+impl<M: FilterMask> FilterInPlace<M> for BoolVector
 where
-    for<'a> &'a mut Cow<BitBuffer>: Filter<M, Output = ()>,
-    for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,
+    Cow<BitBuffer>: FilterInPlace<M>,
+    Cow<Mask>: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) -> Self::Output {
-        unsafe { self.bits_mut().filter(selection) };
-        unsafe { self.validity_mut().filter(selection) };
+    fn filter_in_place(&mut self, selection: &M) {
+        unsafe { self.bits_mut().filter_in_place(selection) };
+        unsafe { self.validity_mut().filter_in_place(selection) };
     }
 }

@@ -14,7 +14,7 @@ mod slice_mut;
 mod vector;
 
 /// Function for filtering based on a selection mask.
-pub trait Filter<By: FilterMask + ?Sized> {
+pub trait Filter<By: FilterMask> {
     /// The result type after performing the operation.
     type Output;
 
@@ -25,7 +25,17 @@ pub trait Filter<By: FilterMask + ?Sized> {
     /// # Panics
     ///
     /// If the length of the mask does not equal the length of the value being filtered.
+    #[must_use = "Filter does not modify in place"]
     fn filter(self, selection: &By) -> Self::Output;
+}
+
+/// Function for in-place filtering based on a selection mask.
+pub trait FilterInPlace<By: FilterMask + ?Sized> {
+    /// Filters the vector in place using the provided mask.
+    ///
+    /// For types that hold a length, the result should be updated to reflect the
+    /// [`FilterMask::true_count`].
+    fn filter_in_place(&mut self, selection: &By);
 }
 
 /// A mask that can provide a count of true values.

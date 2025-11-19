@@ -3,7 +3,7 @@
 
 use vortex_vector::fixed_size_list::FixedSizeListVector;
 
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 
 // TODO(aduffy): there really isn't a cheap way to implement these is there.
 
@@ -17,10 +17,8 @@ impl<M: FilterMask> Filter<M> for &FixedSizeListVector {
     }
 }
 
-impl<M: FilterMask> Filter<M> for &mut FixedSizeListVector {
-    type Output = ();
-
-    fn filter(self, _selection: &M) -> Self::Output {
+impl<M: FilterMask> FilterInPlace<M> for FixedSizeListVector {
+    fn filter_in_place(&mut self, _selection: &M) {
         // We need to spread the mask out to point to offsets from
         // the inner vector type
         todo!()

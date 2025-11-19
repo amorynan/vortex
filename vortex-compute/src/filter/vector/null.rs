@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 use vortex_mask::Mask;
 use vortex_vector::null::NullVector;
 use vortex_vector::Cow;
@@ -17,13 +17,11 @@ where
     }
 }
 
-impl<M: FilterMask> Filter<M> for &mut NullVector
+impl<M: FilterMask> FilterInPlace<M> for NullVector
 where
-    for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,
+    Cow<Mask>: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) -> Self::Output {
+    fn filter_in_place(&mut self, selection: &M) {
         *self = NullVector::new(selection.true_count())
     }
 }

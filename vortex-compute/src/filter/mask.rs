@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 use vortex_buffer::{BitBuffer, BitBufferMut};
 use vortex_error::VortexExpect;
 use vortex_mask::{Mask, MaskMut};
@@ -22,23 +22,22 @@ where
     }
 }
 
-impl<M: FilterMask> Filter<M> for &mut Cow<Mask>
+impl<M: FilterMask> FilterInPlace<M> for Cow<Mask>
 where
     for<'a> &'a Mask: Filter<M, Output = Mask>,
-    for<'a> &'a mut MaskMut: Filter<M, Output = ()>,
+    MaskMut: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) {
+    fn filter_in_place(&mut self, selection: &M) {
         match self.try_mut() {
             Ok(mutable) => {
-                mutable.filter(selection);
+                mutable.filter_in_place(selection);
             }
             Err(frozen) => {
                 let filtered = frozen.filter(selection);
                 *self = Cow::Frozen(filtered);
             }
         }
+        debug_assert_eq!(self.len(), selection.true_count())
     }
 }
 
@@ -78,13 +77,11 @@ where
     }
 }
 
-impl<M: FilterMask> Filter<M> for &mut MaskMut
+impl<M: FilterMask> FilterInPlace<M> for MaskMut
 where
-    for<'a> &'a mut BitBufferMut: Filter<M, Output = ()>,
+    BitBufferMut: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) -> Self::Output {
+    fn filter_in_place(&mut self, selection: &M) {
         if self.all_true() {
             *self = MaskMut::new_true(selection.true_count());
             return;
@@ -95,6 +92,6 @@ where
         }
         self.as_bit_buffer_mut()
             .vortex_expect("Checked all-true and all-false cases; should have bit buffer")
-            .filter(selection);
+            .filter_in_place(selection);
     }
 }

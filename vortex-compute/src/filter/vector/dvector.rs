@@ -7,7 +7,7 @@ use vortex_mask::Mask;
 use vortex_vector::decimal::DVector;
 use vortex_vector::{Cow, VectorOps};
 
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 
 impl<M: FilterMask, D: NativeDecimalType> Filter<M> for &DVector<D>
 where
@@ -26,18 +26,16 @@ where
     }
 }
 
-impl<M: FilterMask, D: NativeDecimalType> Filter<M> for &mut DVector<D>
+impl<M: FilterMask, D: NativeDecimalType> FilterInPlace<M> for DVector<D>
 where
-    for<'a> &'a mut Cow<Buffer<D>>: Filter<M, Output = ()>,
-    for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,
+    Cow<Buffer<D>>: FilterInPlace<M>,
+    Cow<Mask>: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) -> Self::Output {
+    fn filter_in_place(&mut self, selection: &M) {
         // SAFETY: we filter elements and validity using the same mask
         unsafe {
-            self.elements_mut().filter(selection);
-            self.validity_mut().filter(selection);
+            self.elements_mut().filter_in_place(selection);
+            self.validity_mut().filter_in_place(selection);
         }
     }
 }

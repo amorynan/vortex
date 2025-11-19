@@ -12,20 +12,18 @@ use std::ptr;
 use vortex_buffer::BitView;
 use vortex_mask::Mask;
 
-use crate::filter::Filter;
+use crate::filter::FilterInPlace;
 
-impl<T: Copy> Filter<Mask> for &mut [T] {
-    type Output = Self;
-
-    fn filter(self, selection: &Mask) -> Self::Output {
+impl<T: Copy> FilterInPlace<Mask> for [T] {
+    fn filter_in_place(&mut self, selection: &Mask) {
         assert_eq!(
             self.len(),
             selection.len(),
             "Mask length must equal the slice length"
         );
         match selection {
-            Mask::AllTrue(_) => self,
-            Mask::AllFalse(_) => &mut self[..0],
+            Mask::AllTrue(_) => {}
+            Mask::AllFalse(_) => {}
             Mask::Values(v) => {
                 // We choose to _always_ use slices here because iterating over indices will have
                 // strictly more loop iterations than slices, and the overhead over batched
@@ -42,15 +40,10 @@ impl<T: Copy> Filter<Mask> for &mut [T] {
 
 /// Filters a buffer in-place using slice ranges to determine which values to keep.
 ///
-/// Returns the new length of the buffer.
-///
 /// # Safety
 ///
 /// The slice ranges must be in the range of the `buffer`.
-unsafe fn filter_slices_in_place<'a, T: Copy>(
-    buffer: &'a mut [T],
-    slices: &[(usize, usize)],
-) -> &'a mut [T] {
+unsafe fn filter_slices_in_place<'a, T: Copy>(buffer: &'a mut [T], slices: &[(usize, usize)]) {
     let mut write_pos = 0;
 
     // For each range in the selection, copy all of the elements to the current write position.
@@ -71,14 +64,10 @@ unsafe fn filter_slices_in_place<'a, T: Copy>(
 
         write_pos += len;
     }
-
-    &mut buffer[..write_pos]
 }
 
-impl<'a, const NB: usize, T: Copy> Filter<BitView<'a, NB>> for &mut [T] {
-    type Output = Self;
-
-    fn filter(self, mask: &BitView<'a, NB>) -> Self::Output {
+impl<'a, const NB: usize, T: Copy> FilterInPlace<BitView<'a, NB>> for [T] {
+    fn filter_in_place(&mut self, selection: &BitView<'a, NB>) {
         assert_eq!(
             self.len(),
             BitView::<NB>::N,
@@ -89,7 +78,7 @@ impl<'a, const NB: usize, T: Copy> Filter<BitView<'a, NB>> for &mut [T] {
         let mut write_ptr = self.as_mut_ptr();
 
         // First we loop 64 elements at a time (usize::BITS)
-        for mut word in mask.iter_words() {
+        for mut word in selection.iter_words() {
             match word {
                 0usize => {
                     // No bits set => skip usize::BITS slice.
@@ -146,7 +135,5 @@ impl<'a, const NB: usize, T: Copy> Filter<BitView<'a, NB>> for &mut [T] {
                 }
             }
         }
-
-        &mut self[..mask.true_count()]
     }
 }

@@ -339,16 +339,6 @@ impl VectorOps for ListViewVector {
     //     debug_assert_eq!(self.len, self.validity.len());
     // }
 
-    // fn freeze(self) -> ListViewVector {
-    //     ListViewVector {
-    //         offsets: self.offsets.freeze(),
-    //         sizes: self.sizes.freeze(),
-    //         elements: Arc::new(self.elements.freeze()),
-    //         validity: self.validity.freeze(),
-    //         len: self.len,
-    //     }
-    // }
-
     fn split_off(&mut self, _at: usize) -> Self {
         todo!()
     }
@@ -366,14 +356,17 @@ impl VectorOps for ListViewVector {
     }
 
     fn ensure_frozen(&mut self) {
+        self.offsets.ensure_frozen();
+        self.sizes.ensure_frozen();
+        self.elements.ensure_frozen();
+        self.validity.ensure_frozen();
+    }
+
+    fn append_zeros(&mut self, _n: usize) {
         todo!()
     }
 
-    fn append_zeros(&mut self, n: usize) {
-        todo!()
-    }
-
-    fn append_nulls(&mut self, n: usize) {
+    fn append_nulls(&mut self, _n: usize) {
         todo!()
     }
 }

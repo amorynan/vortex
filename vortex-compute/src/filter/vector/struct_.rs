@@ -5,7 +5,7 @@ use vortex_mask::Mask;
 use vortex_vector::struct_::StructVector;
 use vortex_vector::{Cow, Vector, VectorOps};
 
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 
 impl<M: FilterMask> Filter<M> for &StructVector
 where
@@ -29,21 +29,19 @@ where
     }
 }
 
-impl<M: FilterMask> Filter<M> for &mut StructVector
+impl<M: FilterMask> FilterInPlace<M> for StructVector
 where
-    for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,
-    for<'a> &'a mut Vector: Filter<M, Output = ()>,
+    Cow<Mask>: FilterInPlace<M>,
+    Vector: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) -> Self::Output {
+    fn filter_in_place(&mut self, selection: &M) {
         // SAFETY: all field vectors and selection vector are filtered with same mask
         unsafe {
             for field in self.fields_mut() {
-                field.filter(selection);
+                field.filter_in_place(selection);
             }
 
-            self.validity_mut().filter(selection);
+            self.validity_mut().filter_in_place(selection);
         }
     }
 }

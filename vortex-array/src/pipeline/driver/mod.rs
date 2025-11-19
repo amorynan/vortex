@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+use vortex_compute::filter::FilterInPlace;
 mod allocation;
 mod bind;
 mod input;
@@ -313,7 +314,7 @@ impl Pipeline {
                             if tail.len() != N {
                                 tail.append_nulls(N - tail.len());
                             }
-                            // tail.filter(selection);
+                            tail.filter_in_place(selection);
                             assert_eq!(tail.len(), selection.true_count());
                         }
                     }

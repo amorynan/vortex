@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 use vortex_buffer::{
     get_bit, get_bit_unchecked, set_bit_unchecked, unset_bit_unchecked, BitBuffer, BitBufferMut, BitView,
     ByteBufferMut,
@@ -24,23 +24,22 @@ where
     }
 }
 
-impl<M: FilterMask> Filter<M> for &mut Cow<BitBuffer>
+impl<M: FilterMask> FilterInPlace<M> for Cow<BitBuffer>
 where
     for<'a> &'a BitBuffer: Filter<M, Output = BitBuffer>,
-    for<'a> &'a mut BitBufferMut: Filter<M, Output = ()>,
+    BitBufferMut: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) {
+    fn filter_in_place(&mut self, selection: &M) {
         match self {
             Cow::Frozen(b) => {
                 let filtered = b.filter(selection);
                 *self = Cow::Frozen(filtered);
             }
             Cow::Mutable(b) => {
-                b.filter(selection);
+                b.filter_in_place(selection);
             }
         }
+        debug_assert_eq!(self.len(), selection.true_count())
     }
 }
 
@@ -82,17 +81,15 @@ impl Filter<Mask> for &BitBufferMut {
     }
 }
 
-impl Filter<Mask> for &mut BitBufferMut {
-    type Output = ();
-
-    fn filter(self, selection_mask: &Mask) {
+impl FilterInPlace<Mask> for BitBufferMut {
+    fn filter_in_place(&mut self, selection: &Mask) {
         assert_eq!(
-            selection_mask.len(),
+            selection.len(),
             self.len(),
             "Selection mask length must equal the mask length"
         );
 
-        match selection_mask {
+        match selection {
             Mask::AllTrue(_) => {}
             Mask::AllFalse(_) => self.clear(),
             Mask::Values(v) => {
@@ -162,10 +159,8 @@ impl<const NB: usize> Filter<BitView<'_, NB>> for &BitBufferMut {
     }
 }
 
-impl<const NB: usize> Filter<BitView<'_, NB>> for &mut BitBufferMut {
-    type Output = ();
-
-    fn filter(self, selection: &BitView<'_, NB>) {
+impl<const NB: usize> FilterInPlace<BitView<'_, NB>> for BitBufferMut {
+    fn filter_in_place(&mut self, selection: &BitView<'_, NB>) {
         assert_eq!(
             self.len(),
             BitView::<NB>::N,

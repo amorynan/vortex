@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+use vortex_compute::mask::MaskValidity;
 use vortex_error::VortexResult;
 
 use crate::arrays::{MaskedArray, MaskedVTable};
-use crate::execution::{BatchKernelRef, BindCtx};
+use crate::execution::{kernel, BatchKernelRef, BindCtx};
 use crate::vtable::OperatorVTable;
 use crate::ArrayRef;
 
@@ -18,12 +19,10 @@ impl OperatorVTable<MaskedVTable> for MaskedVTable {
         let mask = ctx.bind_validity(&array.validity, array.len(), selection)?;
         let child = ctx.bind(&array.child, selection)?;
 
-        todo!()
-
-        // Ok(kernel(move || {
-        //     let mask = mask.execute()?;
-        //     let child = child.execute()?;
-        //     Ok(MaskValidity::mask_validity(child, &mask))
-        // }))
+        Ok(kernel(move || {
+            let mask = mask.execute()?;
+            let child = child.execute()?;
+            Ok(MaskValidity::mask_validity(child, &mask))
+        }))
     }
 }

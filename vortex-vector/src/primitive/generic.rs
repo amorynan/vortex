@@ -73,6 +73,12 @@ impl<T> PVector<T> {
         }
     }
 
+    /// Reserve capacity for at least `additional` more elements to be inserted.
+    pub fn reserve(&mut self, additional: usize) {
+        self.elements.ensure_mut().reserve(additional);
+        self.validity.ensure_mut().reserve(additional);
+    }
+
     pub fn into_parts(self) -> (Cow<Buffer<T>>, Cow<Mask>) {
         (self.elements, self.validity)
     }

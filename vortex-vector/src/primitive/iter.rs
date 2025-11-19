@@ -34,7 +34,7 @@ impl<T: NativePType> Extend<Option<T>> for PVector<T> {
 
         // We choose not to use the optional upper bound size hint to match the standard library.
 
-        // self.reserve(lower_bound);
+        self.reserve(lower_bound);
 
         // We have to update validity per-element since it depends on Option variant.
         for opt_val in iter {

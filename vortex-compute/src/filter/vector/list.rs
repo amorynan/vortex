@@ -6,7 +6,7 @@ use vortex_vector::listview::ListViewVector;
 use vortex_vector::primitive::PrimitiveVector;
 use vortex_vector::{Cow, VectorOps};
 
-use crate::filter::{Filter, FilterMask};
+use crate::filter::{Filter, FilterInPlace, FilterMask};
 
 impl<M: FilterMask> Filter<M> for &ListViewVector
 where
@@ -32,19 +32,17 @@ where
     }
 }
 
-impl<M: FilterMask> Filter<M> for &mut ListViewVector
+impl<M: FilterMask> FilterInPlace<M> for ListViewVector
 where
-    for<'a> &'a mut PrimitiveVector: Filter<M, Output = ()>,
-    for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,
+    PrimitiveVector: FilterInPlace<M>,
+    Cow<Mask>: FilterInPlace<M>,
 {
-    type Output = ();
-
-    fn filter(self, selection: &M) -> Self::Output {
+    fn filter_in_place(&mut self, selection: &M) {
         // SAFETY: offsets, sizes, validity all being filtered with same mask
         unsafe {
-            self.offsets_mut().filter(selection);
-            self.sizes_mut().filter(selection);
-            self.validity_mut().filter(selection);
+            self.offsets_mut().filter_in_place(selection);
+            self.sizes_mut().filter_in_place(selection);
+            self.validity_mut().filter_in_place(selection);
         }
     }
 }
