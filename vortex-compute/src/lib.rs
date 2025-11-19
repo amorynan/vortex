@@ -13,5 +13,5 @@
 // pub mod comparison;
 // pub mod expand;
 pub mod filter;
-// pub mod logical;
+pub mod logical;
 pub mod mask;

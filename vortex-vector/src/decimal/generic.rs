@@ -119,6 +119,10 @@ impl<D: NativeDecimalType> DVector<D> {
         }
     }
 
+    pub fn into_parts(self) -> (PrecisionScale<D>, Cow<Buffer<D>>, Cow<Mask>) {
+        (self.ps, self.elements, self.validity)
+    }
+
     /// Decomposes the decimal vector into its constituent parts ([`PrecisionScale`], decimal
     /// buffer, and validity).
     pub fn into_frozen_parts(self) -> (PrecisionScale<D>, Buffer<D>, Mask) {

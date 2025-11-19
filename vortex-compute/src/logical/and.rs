@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use std::ops::BitAnd;
-
-use vortex_vector::VectorOps;
+use vortex_buffer::BitBuffer;
 use vortex_vector::bool::BoolVector;
+use vortex_vector::{Cow, VectorOps};
 
 use crate::logical::LogicalAnd;
 
@@ -14,8 +14,8 @@ impl LogicalAnd for &BoolVector {
 
     fn and(self, other: &BoolVector) -> BoolVector {
         BoolVector::new(
-            self.bits().bitand(other.bits()),
-            self.validity().bitand(other.validity()),
+            self.bits().and(other.bits()),
+            self.validity().and(other.validity()),
         )
     }
 }
@@ -25,6 +25,21 @@ impl LogicalAnd<&BoolVector> for BoolVector {
 
     fn and(self, other: &BoolVector) -> BoolVector {
         (&self).and(other)
+    }
+}
+
+impl LogicalAnd for &Cow<BitBuffer> {
+    type Output = Cow<BitBuffer>;
+
+    fn and(self, other: Self) -> Self::Output {
+        // FIXME(ngates): create a BitView to avoid cloning mutable buffers here
+        let buffer = match (self, other) {
+            (Cow::Frozen(a), Cow::Frozen(b)) => a.bitand(b),
+            (Cow::Mutable(a), Cow::Frozen(b)) => a.clone().freeze().bitand(b),
+            (Cow::Frozen(a), Cow::Mutable(b)) => a.bitand(b.clone().freeze()),
+            (Cow::Mutable(a), Cow::Mutable(b)) => a.clone().freeze().bitand(&b.clone().freeze()),
+        };
+        Cow::Frozen(buffer)
     }
 }
 

@@ -3,9 +3,9 @@
 
 //! Compute function for masking the validity of vectors.
 
-use vortex_dtype::NativePType;
+use vortex_dtype::{NativeDecimalType, NativePType};
 use vortex_mask::Mask;
-use vortex_vector::binaryview::BinaryViewVector;
+use vortex_vector::binaryview::{BinaryViewType, BinaryViewVector};
 use vortex_vector::bool::BoolVector;
 use vortex_vector::decimal::{DVector, DecimalVector};
 use vortex_vector::fixed_size_list::FixedSizeListVector;
@@ -69,7 +69,7 @@ impl<D: NativeDecimalType> MaskValidity for DVector<D> {
     fn mask_validity(self, mask: &Mask) -> Self {
         let (ps, elements, validity) = self.into_parts();
         // SAFETY: we are preserving the original elements buffer and only modifying the validity.
-        unsafe { Self::new_unchecked(ps, elements, validity.bitand(mask)) }
+        unsafe { Self::new_unchecked(ps, elements, validity.and(mask)) }
     }
 }
 

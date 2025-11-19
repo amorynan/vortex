@@ -79,6 +79,10 @@ impl<T> PVector<T> {
         self.validity.ensure_mut().reserve(additional);
     }
 
+    pub fn as_parts_mut(&mut self) -> (&mut Buffer<T>, &mut Mask) {
+        (&mut self.elements, &mut self.validity)
+    }
+
     pub fn into_parts(self) -> (Cow<Buffer<T>>, Cow<Mask>) {
         (self.elements, self.validity)
     }

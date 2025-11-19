@@ -33,6 +33,10 @@ pub trait IntoFrozen: Clone {
 }
 
 /// A clone-on-write enum that can hold either an owned immutable or owned mutable value.
+///
+// NOTE(ngates): the reason for this entire thing is because we cannot do the sequence of
+// `BytesMut::split_off`, `BytesMut::freeze`, `Bytes::into_mut`, `BytesMut::unsplit` with
+//  zero-copy. The freeze/into_mut will trigger a copy.
 #[derive(Clone)]
 pub enum Cow<F>
 where

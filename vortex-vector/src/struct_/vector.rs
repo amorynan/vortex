@@ -111,6 +111,10 @@ impl StructVector {
         }
     }
 
+    pub fn into_parts(self) -> (Box<[Vector]>, Cow<Mask>) {
+        (self.fields, self.validity)
+    }
+
     /// Decomposes the struct vector into its constituent parts (fields, validity, and length).
     pub fn into_frozen_parts(self) -> (Box<[Vector]>, Mask) {
         (self.fields, self.validity.into_frozen())

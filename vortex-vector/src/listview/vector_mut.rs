@@ -186,6 +186,10 @@ impl ListViewVector {
         }
     }
 
+    pub fn into_parts(self) -> (Box<Vector>, PrimitiveVector, PrimitiveVector, Cow<Mask>) {
+        (self.elements, self.offsets, self.sizes, self.validity)
+    }
+
     /// Decomposes the [`ListViewVector`] into its constituent parts (child elements, offsets,
     /// sizes, and validity).
     pub fn into_frozen_parts(self) -> (Box<Vector>, PrimitiveVector, PrimitiveVector, Mask) {

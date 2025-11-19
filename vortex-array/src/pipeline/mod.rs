@@ -3,7 +3,10 @@
 
 pub mod driver;
 
+use std::mem;
+use vortex_dtype::PTypeDowncastExt;
 use vortex_error::{VortexExpect, VortexResult};
+use vortex_vector::primitive::PVector;
 use vortex_vector::Vector;
 
 /// A view over a fixed-size `N`-bit vector used in Vortex pipeline execution.
@@ -88,6 +91,48 @@ pub trait Kernel: Send {
         selection: &BitView,
         out: Vector,
     ) -> VortexResult<Vector>;
+}
+
+// 1. (&mut Bytes) -> ()
+//   * For copy into pipeline sink
+// 2. (Bytes) -> Bytes
+//   * Forced copy into pipeline sink (because we have to freeze BytesMut -> Bytes).
+// 3. (&mut Bytes) -> () with Cows
+//   * split_off / unsplit works for zero-copy pipeline sink
+//   * Because of Cow, we can _hold_ a BufferMut. And therefore unsplit without copy.
+
+
+// let out = BytesMut::with_capacity(total_len);
+// let chunk: BytesMut = out.split_off(1024);
+// let chunk = kernel.step(chunk.freeze()); <--
+// out.unsplit(chunk); <-- non zero-copy if chunk has _ever_ been frozen.
+
+
+// 4. (VectorMut) -> VectorMut
+//
+
+
+// (&mut Vec<T>) -> ()
+// (Vec<T>) -> Vec<T>
+
+pub trait Kernel2: Send {
+    /// Perform a single step of the kernel.
+    fn step(
+        &mut self,
+        ctx: &KernelCtx, // input() -> &Vector
+        selection: &BitView,
+        out: Vector,
+    ) -> VortexResult<Vector> {
+        let vec = out.into_primitive().downcast::<u32>();
+        let (elements, validity) = vec.into_parts();
+
+        PVector::new()
+
+        let (elements, validity) = unsafe { vec.as_parts_mut() };
+        let elements_mut = mem::take(elements).into_mut();
+
+        *elements = elements_mut.freeze();
+    }
 }
 
 /// The context provided to kernels during execution to access input vectors.

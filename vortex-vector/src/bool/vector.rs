@@ -58,6 +58,10 @@ impl BoolVector {
         }
     }
 
+    pub fn into_parts(self) -> (Cow<BitBuffer>, Cow<Mask>) {
+        (self.bits, self.validity)
+    }
+
     pub fn into_frozen_parts(self) -> (BitBuffer, Mask) {
         (self.bits.into_frozen(), self.validity.into_frozen())
     }
