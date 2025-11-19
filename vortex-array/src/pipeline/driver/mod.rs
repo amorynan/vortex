@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use vortex_compute::filter::Filter;
-pub mod allocation;
+mod allocation;
 mod bind;
 mod input;
 mod toposort;
@@ -311,11 +310,11 @@ impl Pipeline {
                             // TODO(ngates): this is janky and forces us to filter validity also,
                             //  but we need the tail.len() == N in order to invoke filter.
                             // todo!()
-                            // if tail.len() != N {
-                            //     tail.append_nulls(N - tail.len());
-                            // }
+                            if tail.len() != N {
+                                tail.append_nulls(N - tail.len());
+                            }
                             // tail.filter(selection);
-                            // assert_eq!(tail.len(), selection.true_count());
+                            assert_eq!(tail.len(), selection.true_count());
                         }
                     }
 
