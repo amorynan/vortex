@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use vortex_compute::filter::Filter;
-use vortex_dtype::{PrecisionScale, match_each_decimal_value_type};
+use vortex_dtype::{match_each_decimal_value_type, PrecisionScale};
 use vortex_error::VortexResult;
 use vortex_vector::decimal::DVector;
 
 use crate::arrays::{DecimalArray, DecimalVTable, MaskedVTable};
-use crate::execution::{BatchKernelRef, BindCtx, kernel};
+use crate::execution::{kernel, BatchKernelRef, BindCtx};
 use crate::vtable::{OperatorVTable, ValidityHelper};
 use crate::{ArrayRef, IntoArray};
 
@@ -32,7 +32,7 @@ impl OperatorVTable<DecimalVTable> for DecimalVTable {
                 // the elements.
                 let elements = elements.filter(&mask);
 
-                Ok(DVector::<D>::try_new(ps, elements, validity)?.into())
+                Ok(DVector::<D>::try_new(ps, elements.into(), validity.into())?.into())
             }))
         })
     }

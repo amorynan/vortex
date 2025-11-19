@@ -24,8 +24,8 @@ impl Kernel for InputKernel {
         &mut self,
         _ctx: &mut KernelCtx,
         selection: &BitView,
-        mut out: VectorMut,
-    ) -> VortexResult<VectorMut> {
+        mut out: Vector,
+    ) -> VortexResult<Vector> {
         let mut batch = self
             .batch
             .take()

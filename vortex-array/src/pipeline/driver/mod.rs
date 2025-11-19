@@ -273,7 +273,7 @@ impl Pipeline {
         &mut self,
         selection: &BitView,
         step_len: usize,
-        output: &mut VectorMut,
+        output: &mut Vector,
     ) -> VortexResult<()> {
         // Loop over the kernels in toposorted execution order.
         for &node_idx in self.exec_order.iter() {

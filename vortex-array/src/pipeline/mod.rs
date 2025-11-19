@@ -86,8 +86,8 @@ pub trait Kernel: Send {
         &mut self,
         ctx: &mut KernelCtx,
         selection: &BitView,
-        out: VectorMut,
-    ) -> VortexResult<VectorMut>;
+        out: Vector,
+    ) -> VortexResult<Vector>;
 }
 
 /// The context provided to kernels during execution to access input vectors.
@@ -112,7 +112,7 @@ impl KernelCtx {
     ///
     /// If the input vector at the given index is not available (typically because the vector
     /// happens to be currently borrowed as an output vector!).
-    pub fn input(&mut self, id: VectorId) -> &mut VectorMut {
+    pub fn input(&mut self, id: VectorId) -> &mut Vector {
         self.vectors[id.0]
             .as_mut()
             .vortex_expect("Input vector at index is not available")

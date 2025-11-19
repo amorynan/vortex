@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use std::sync::Arc;
-
 use vortex_error::VortexResult;
 use vortex_vector::listview::ListViewVector;
 
-use crate::ArrayRef;
 use crate::arrays::{ListViewArray, ListViewVTable};
-use crate::execution::{BatchKernelRef, BindCtx, kernel};
+use crate::execution::{kernel, BatchKernelRef, BindCtx};
 use crate::vtable::{OperatorVTable, ValidityHelper};
+use crate::ArrayRef;
 
 impl OperatorVTable<ListViewVTable> for ListViewVTable {
     fn bind(
@@ -36,7 +34,10 @@ impl OperatorVTable<ListViewVTable> for ListViewVTable {
             // TODO There is definitely a smarter way we can do this...
             let elements = elements_kernel.execute()?;
 
-            Ok(ListViewVector::try_new(Arc::new(elements), offsets, sizes, validity_mask)?.into())
+            Ok(
+                ListViewVector::try_new(Box::new(elements), offsets, sizes, validity_mask.into())?
+                    .into(),
+            )
         }))
     }
 }
@@ -47,12 +48,12 @@ mod tests {
     use vortex_mask::Mask;
     use vortex_vector::VectorOps;
 
-    use crate::IntoArray;
     use crate::arrays::listview::tests::common::{
         create_basic_listview, create_nullable_listview, create_overlapping_listview,
     };
     use crate::arrays::{ListViewArray, PrimitiveArray};
     use crate::validity::Validity;
+    use crate::IntoArray;
 
     #[test]
     fn test_listview_operator_basic() {

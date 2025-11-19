@@ -6,7 +6,7 @@ use vortex_error::VortexResult;
 use vortex_vector::bool::BoolVector;
 
 use crate::arrays::{BoolArray, BoolVTable, MaskedVTable};
-use crate::execution::{BatchKernelRef, BindCtx, kernel};
+use crate::execution::{kernel, BatchKernelRef, BindCtx};
 use crate::vtable::{OperatorVTable, ValidityHelper};
 use crate::{ArrayRef, IntoArray};
 
@@ -27,7 +27,7 @@ impl OperatorVTable<BoolVTable> for BoolVTable {
             // Note that validity already has the mask applied so we only need to apply it to bits.
             let bits = bits.filter(&mask);
 
-            Ok(BoolVector::try_new(bits, validity)?.into())
+            Ok(BoolVector::try_new(bits.into(), validity.into())?.into())
         }))
     }
 

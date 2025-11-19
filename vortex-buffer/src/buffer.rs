@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, RangeBounds};
 
 use bytes::{Buf, Bytes};
-use vortex_error::{VortexExpect, vortex_panic};
+use vortex_error::{vortex_panic, VortexExpect};
 
 use crate::debug::TruncatedDebug;
 use crate::trusted_len::TrustedLen;
@@ -460,6 +460,17 @@ impl<T> Buffer<T> {
             vortex_panic!("Buffer is not aligned to requested alignment {}", alignment)
         }
     }
+
+    /// Shortens the buffer, keeping the first len bytes and dropping the rest.
+    ///
+    /// If len is greater than the buffer’s current length, this has no effect.
+    pub fn truncate(&mut self, len: usize) {
+        if len >= self.length {
+            return;
+        }
+        self.bytes.truncate(len * size_of::<T>());
+        self.length = len;
+    }
 }
 
 /// An iterator over Buffer elements.
@@ -657,7 +668,7 @@ impl<T> From<BufferMut<T>> for Buffer<T> {
 mod test {
     use bytes::Buf;
 
-    use crate::{Alignment, Buffer, ByteBuffer, buffer};
+    use crate::{buffer, Alignment, Buffer, ByteBuffer};
 
     #[test]
     fn align() {
