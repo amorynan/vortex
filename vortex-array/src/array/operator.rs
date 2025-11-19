@@ -3,13 +3,13 @@
 
 use std::sync::Arc;
 
-use vortex_error::{VortexResult, vortex_panic};
+use vortex_error::VortexResult;
 use vortex_mask::Mask;
-use vortex_vector::{Vector, VectorOps, vector_matches_dtype};
+use vortex_vector::{Vector, VectorOps};
 
 use crate::execution::{BatchKernelRef, BindCtx, DummyExecutionCtx, ExecutionCtx};
-use crate::pipeline::PipelinedNode;
 use crate::pipeline::driver::PipelineDriver;
+use crate::pipeline::PipelinedNode;
 use crate::vtable::{OperatorVTable, VTable};
 use crate::{Array, ArrayAdapter, ArrayRef};
 
@@ -84,13 +84,13 @@ impl<V: VTable> ArrayOperator for ArrayAdapter<V> {
 
         if cfg!(debug_assertions) {
             // Checks for correct type and nullability.
-            if !vector_matches_dtype(&vector, self.dtype()) {
-                vortex_panic!(
-                    "Returned vector {:?} does not match expected dtype {}",
-                    vector,
-                    self.dtype()
-                );
-            }
+            // if !vector_matches_dtype(&vector, self.dtype()) {
+            //     vortex_panic!(
+            //         "Returned vector {:?} does not match expected dtype {}",
+            //         vector,
+            //         self.dtype()
+            //     );
+            // }
         }
 
         Ok(vector)

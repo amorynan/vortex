@@ -45,7 +45,7 @@
 //!
 //! ```
 //! use vortex_vector::bool::BoolVector;
-//! use vortex_vector::{VectorOps, VectorOps};
+//! use vortex_vector::{VectorOps};
 //!
 //! let mut vec = BoolVector::from_iter([true, false, true].map(Some));
 //!

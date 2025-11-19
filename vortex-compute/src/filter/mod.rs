@@ -7,7 +7,7 @@ mod bitbuffer;
 mod buffer;
 mod mask;
 mod slice_mut;
-mod vector;
+// mod vector;
 
 /// Function for filtering based on a selection mask.
 pub trait Filter<By: ?Sized> {

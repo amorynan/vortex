@@ -30,7 +30,7 @@ impl OperatorVTable<ConstantVTable> for ConstantVTable {
         Ok(kernel(move || {
             // TODO(ngates): would be good to do a sum aggregation, rather than execution.
             let mask = mask.execute()?;
-            Ok(to_vector(scalar, mask.true_count()).freeze())
+            Ok(to_vector(scalar, mask.true_count()))
         }))
     }
 }

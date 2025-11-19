@@ -17,7 +17,7 @@ impl<T: NativePType> Extend<Option<T>> for PVector<T> {
     ///
     /// ```
     /// use vortex_vector::primitive::PVector;
-    /// use vortex_vector::{VectorOps, VectorOps};
+    /// use vortex_vector::{VectorOps};
     ///
     /// let mut vec = PVector::from_iter([Some(1i32), None]);
     /// vec.extend([Some(3), None, Some(5)]);

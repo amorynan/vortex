@@ -13,7 +13,7 @@ use vortex_dtype::DType;
 use vortex_error::{vortex_ensure, VortexResult};
 use vortex_mask::Mask;
 use vortex_utils::aliases::hash_map::{HashMap, RandomState};
-use vortex_vector::{Vector, Vector, VectorOps};
+use vortex_vector::{Vector, VectorOps};
 
 use crate::pipeline::driver::allocation::{allocate_vectors, OutputTarget};
 use crate::pipeline::driver::bind::bind_kernels;

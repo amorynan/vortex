@@ -115,7 +115,7 @@ macro_rules! match_each_vector_mut {
 /// # Examples
 ///
 /// ```
-/// use vortex_vector::{Vector, Vector, VectorOps, match_vector_pair};
+/// use vortex_vector::{Vector, VectorOps, match_vector_pair};
 /// use vortex_vector::bool::{BoolVector, BoolVector};
 ///
 /// fn extend_vector(left: &mut Vector, right: &Vector) {
@@ -134,7 +134,7 @@ macro_rules! match_each_vector_mut {
 /// Note that the vectors can also be owned:
 ///
 /// ```
-/// use vortex_vector::{Vector, Vector, VectorOps, match_vector_pair};
+/// use vortex_vector::{Vector, VectorOps, match_vector_pair};
 /// use vortex_vector::bool::{BoolVector, BoolVector};
 ///
 /// fn extend_vector_owned(mut dest: Vector, src: Vector) -> Vector {

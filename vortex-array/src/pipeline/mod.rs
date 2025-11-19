@@ -4,7 +4,7 @@
 pub mod driver;
 
 use vortex_error::{VortexExpect, VortexResult};
-use vortex_vector::{Vector, Vector};
+use vortex_vector::{Vector};
 
 /// A view over a fixed-size `N`-bit vector used in Vortex pipeline execution.
 pub type BitView<'a> = vortex_buffer::BitView<'a, N_BYTES>;

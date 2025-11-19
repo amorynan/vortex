@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use vortex_error::{VortexExpect, VortexResult};
-use vortex_vector::{Vector, VectorOps, VectorOps};
+use vortex_vector::{Vector, VectorOps};
 
 use crate::pipeline::{BitView, Kernel, KernelCtx, N};
 

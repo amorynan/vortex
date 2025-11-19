@@ -88,7 +88,7 @@
 //!
 //! ```
 //! use vortex_vector::primitive::PVector;
-//! use vortex_vector::{VectorOps, VectorOps};
+//! use vortex_vector::{VectorOps};
 //!
 //! let mut vec = PVector::<f32>::from_iter([1.0, 2.0, 3.0].map(Some));
 //!

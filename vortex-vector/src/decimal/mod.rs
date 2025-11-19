@@ -116,7 +116,7 @@
 //! ```
 //! use vortex_dtype::{PrecisionScale};
 //! use vortex_vector::decimal::DVector;
-//! use vortex_vector::{VectorOps, VectorOps};
+//! use vortex_vector::{VectorOps};
 //!
 //! // Create a mutable decimal vector.
 //! let ps = PrecisionScale::<i128>::new(18, 6);  // High precision with 6 decimal places.
