@@ -16,7 +16,7 @@ use crate::decimal::DecimalVector;
 use crate::fixed_size_list::FixedSizeListVectorMut;
 use crate::listview::ListViewVectorMut;
 use crate::null::NullVectorMut;
-use crate::primitive::PrimitiveVectorMut;
+use crate::primitive::PrimitiveVector;
 use crate::struct_::StructVectorMut;
 use crate::{match_each_vector_mut, match_vector_pair, Cow, VectorMutOps};
 
@@ -44,11 +44,11 @@ pub enum VectorMut {
     Decimal(DecimalVector),
     /// Mutable Primitive vectors.
     ///
-    /// Note that [`PrimitiveVectorMut`] is an enum over the different possible (generic)
-    /// [`PVectorMut<T>`](crate::primitive::PVectorMut)s.
+    /// Note that [`PrimitiveVector`] is an enum over the different possible (generic)
+    /// [`PVectorMut<T>`](crate::primitive::PVector)s.
     ///
     /// See the documentation for more information.
-    Primitive(PrimitiveVectorMut),
+    Primitive(PrimitiveVector),
     /// Mutable String vectors.
     String(StringVector),
     /// Mutable Binary vectors.
@@ -67,9 +67,7 @@ impl VectorMut {
         match dtype {
             DType::Null => NullVectorMut::new(0).into(),
             DType::Bool(_) => BoolVector::with_capacity(capacity).into(),
-            DType::Primitive(ptype, _) => {
-                PrimitiveVectorMut::with_capacity(*ptype, capacity).into()
-            }
+            DType::Primitive(ptype, _) => PrimitiveVector::with_capacity(*ptype, capacity).into(),
             DType::FixedSizeList(elem_dtype, list_size, _) => {
                 FixedSizeListVectorMut::with_capacity(elem_dtype, *list_size, capacity).into()
             }
@@ -146,8 +144,8 @@ impl VectorMut {
         vortex_panic!("Expected BoolVectorMut, got {self:?}");
     }
 
-    /// Returns a reference to the inner [`PrimitiveVectorMut`] if `self` is of that variant.
-    pub fn as_primitive_mut(&mut self) -> &mut PrimitiveVectorMut {
+    /// Returns a reference to the inner [`PrimitiveVector`] if `self` is of that variant.
+    pub fn as_primitive_mut(&mut self) -> &mut PrimitiveVector {
         if let VectorMut::Primitive(v) = self {
             return v;
         }
@@ -210,8 +208,8 @@ impl VectorMut {
         vortex_panic!("Expected BoolVectorMut, got {self:?}");
     }
 
-    /// Consumes `self` and returns the inner [`PrimitiveVectorMut`] if `self` is of that variant.
-    pub fn into_primitive(self) -> PrimitiveVectorMut {
+    /// Consumes `self` and returns the inner [`PrimitiveVector`] if `self` is of that variant.
+    pub fn into_primitive(self) -> PrimitiveVector {
         if let VectorMut::Primitive(v) = self {
             return v;
         }

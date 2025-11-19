@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Definition and implementation of [`PVectorMut<T>`].
+//! Definition and implementation of [`PVector<T>`].
 
 use vortex_buffer::{Buffer, BufferMut};
 use vortex_dtype::NativePType;
@@ -16,15 +16,15 @@ use crate::{Cow, VectorMutOps};
 /// `T` is expected to be bound by [`NativePType`], which templates an internal [`BufferMut<T>`]
 /// that stores the elements of the vector.
 #[derive(Debug, Clone)]
-pub struct PVectorMut<T> {
+pub struct PVector<T> {
     /// The mutable buffer representing the vector elements.
     pub(super) elements: Cow<Buffer<T>>,
     /// The validity mask (where `true` represents an element is **not** null).
     pub(super) validity: Cow<Mask>,
 }
 
-impl<T> PVectorMut<T> {
-    /// Creates a new [`PVectorMut<T>`] from the given elements buffer and validity mask.
+impl<T> PVector<T> {
+    /// Creates a new [`PVector<T>`] from the given elements buffer and validity mask.
     ///
     /// # Panics
     ///
@@ -33,7 +33,7 @@ impl<T> PVectorMut<T> {
         Self::try_new(elements, validity).vortex_expect("Failed to create `PVectorMut`")
     }
 
-    /// Tries to create a new [`PVectorMut<T>`] from the given elements buffer and validity mask.
+    /// Tries to create a new [`PVector<T>`] from the given elements buffer and validity mask.
     ///
     /// # Errors
     ///
@@ -48,7 +48,7 @@ impl<T> PVectorMut<T> {
         Ok(Self { elements, validity })
     }
 
-    /// Creates a new [`PVectorMut<T>`] from the given elements buffer and validity mask without
+    /// Creates a new [`PVector<T>`] from the given elements buffer and validity mask without
     /// validation.
     ///
     /// # Safety
@@ -78,7 +78,7 @@ impl<T> PVectorMut<T> {
         (self.elements, self.validity)
     }
 
-    /// Returns the internal [`Cow<Buffer<T>>`] of the [`PVectorMut`].
+    /// Returns the internal [`Cow<Buffer<T>>`] of the [`PVector`].
     ///
     /// Note that the internal buffer may hold garbage data in place of nulls. That information is
     /// tracked by the [`validity()`](Self::validity).
@@ -99,7 +99,7 @@ impl<T> PVectorMut<T> {
     }
 }
 
-impl<T: NativePType> VectorMutOps for PVectorMut<T> {
+impl<T: NativePType> VectorMutOps for PVector<T> {
     fn len(&self) -> usize {
         self.elements.len()
     }
@@ -122,6 +122,21 @@ impl<T: NativePType> VectorMutOps for PVectorMut<T> {
         self.validity.ensure_mut().truncate(len);
     }
 
+    fn append_zeros(&mut self, n: usize) {
+        self.elements.ensure_mut().push_n(T::default(), n);
+        self.validity.ensure_mut().append_n(true, n);
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        self.elements.ensure_mut().push_n(T::default(), n);
+        self.validity.ensure_mut().append_n(false, n);
+    }
+
+    fn ensure_frozen(&mut self) {
+        self.elements.ensure_frozen();
+        self.validity.ensure_frozen();
+    }
+
     fn split_off(&mut self, at: usize) -> Self {
         Self {
             elements: Cow::Mutable(self.elements.ensure_mut().split_off(at)),
@@ -141,20 +156,5 @@ impl<T: NativePType> VectorMutOps for PVectorMut<T> {
         self.validity
             .ensure_mut()
             .unsplit(other.validity.into_mut());
-    }
-
-    fn ensure_frozen(&mut self) {
-        self.elements.ensure_frozen();
-        self.validity.ensure_frozen();
-    }
-
-    fn append_zeros(&mut self, n: usize) {
-        self.elements.ensure_mut().push_n(T::default(), n);
-        self.validity.ensure_mut().append_n(true, n);
-    }
-
-    fn append_nulls(&mut self, n: usize) {
-        self.elements.ensure_mut().push_n(T::default(), n);
-        self.validity.ensure_mut().append_n(false, n);
     }
 }

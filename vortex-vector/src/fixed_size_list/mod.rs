@@ -12,13 +12,13 @@
 //!
 //! ```
 //! use vortex_vector::fixed_size_list::FixedSizeListVectorMut;
-//! use vortex_vector::primitive::PVectorMut;
+//! use vortex_vector::primitive::PVector;
 //! use vortex_vector::{VectorMut, VectorMutOps};
 //! use vortex_mask::{Mask, MaskMut};
 //!
 //! // Create elements with some null values.
 //! // This will be 9 elements total: [1, null, 3, 4, 5, null, null, 8, 9]
-//! let mut elements = PVectorMut::<i32>::from_iter([
+//! let mut elements = PVector::<i32>::from_iter([
 //!     Some(1), None, Some(3),       // First list
 //!     Some(4), Some(5), None,       // Second list
 //!     None, Some(8), Some(9),       // Third list
@@ -49,12 +49,12 @@
 //!
 //! ```
 //! use vortex_vector::fixed_size_list::FixedSizeListVectorMut;
-//! use vortex_vector::primitive::PVectorMut;
+//! use vortex_vector::primitive::PVector;
 //! use vortex_vector::{VectorMut, VectorMutOps};
 //! use vortex_mask::MaskMut;
 //!
 //! // Create a vector with 6 lists, each containing 2 integers.
-//! let elements = PVectorMut::<i32>::from_iter([
+//! let elements = PVector::<i32>::from_iter([
 //!     1, 2,    // List 0
 //!     3, 4,    // List 1
 //!     5, 6,    // List 2

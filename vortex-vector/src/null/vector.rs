@@ -38,6 +38,10 @@ impl VectorMutOps for NullVectorMut {
         &self.validity
     }
 
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        unsafe { &mut self.validity }
+    }
+
     fn clear(&mut self) {
         self.validity.clear()
     }
@@ -46,21 +50,22 @@ impl VectorMutOps for NullVectorMut {
         self.validity.truncate(len);
     }
 
-    fn split_off(&mut self, at: usize) -> Self {
-        // assert!(
-        //     at <= self.capacity(),
-        //     "split_off out of bounds: {:?} <= {:?}",
-        //     at,
-        //     self.capacity(),
-        // );
-        //
-        // let new_len = self.len.saturating_sub(at);
-        // self.len = std::cmp::min(self.len, at);
-        // NullVectorMut {
-        //     len: new_len,
-        //     validity: Cow::Mutable(MaskMut::new_false(new_len)),
-        // }
+    fn append_zeros(&mut self, n: usize) {
+        self.validity.ensure_mut().append_n(false, n);
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        self.validity.ensure_mut().append_n(false, n);
+    }
+
+    fn ensure_frozen(&mut self) {
         todo!()
+    }
+
+    fn split_off(&mut self, at: usize) -> Self {
+        Self {
+            validity: Cow::Mutable(self.validity.ensure_mut().split_off(at)),
+        }
     }
 
     fn unsplit(&mut self, other: Self) {
@@ -68,21 +73,5 @@ impl VectorMutOps for NullVectorMut {
         self.validity
             .ensure_mut()
             .unsplit(other.validity.into_mut());
-    }
-
-    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
-        unsafe { &mut self.validity }
-    }
-
-    fn ensure_frozen(&mut self) {
-        todo!()
-    }
-
-    fn append_zeros(&mut self, n: usize) {
-        self.validity.ensure_mut().append_n(false, n);
-    }
-
-    fn append_nulls(&mut self, n: usize) {
-        self.validity.ensure_mut().append_n(false, n);
     }
 }

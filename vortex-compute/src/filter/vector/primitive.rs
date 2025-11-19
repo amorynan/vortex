@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use vortex_mask::Mask;
-use vortex_vector::primitive::{PrimitiveVector, PrimitiveVectorMut};
+use vortex_vector::primitive::{PrimitiveVector, PrimitiveVector};
 use vortex_vector::{match_each_pvector, match_each_pvector_mut};
 
 use crate::filter::{Filter, MaskIndices};
@@ -23,7 +23,7 @@ impl Filter<MaskIndices<'_>> for &PrimitiveVector {
     }
 }
 
-impl Filter<Mask> for &mut PrimitiveVectorMut {
+impl Filter<Mask> for &mut PrimitiveVector {
     type Output = ();
 
     fn filter(self, selection_mask: &Mask) {
@@ -31,7 +31,7 @@ impl Filter<Mask> for &mut PrimitiveVectorMut {
     }
 }
 
-impl Filter<MaskIndices<'_>> for &mut PrimitiveVectorMut {
+impl Filter<MaskIndices<'_>> for &mut PrimitiveVector {
     type Output = ();
 
     fn filter(self, indices: &MaskIndices<'_>) -> Self::Output {
@@ -43,7 +43,7 @@ impl Filter<MaskIndices<'_>> for &mut PrimitiveVectorMut {
 mod tests {
     use vortex_dtype::PTypeDowncast;
     use vortex_mask::Mask;
-    use vortex_vector::primitive::PVectorMut;
+    use vortex_vector::primitive::PVector;
     use vortex_vector::{VectorMutOps, VectorOps};
 
     use super::*;
@@ -51,7 +51,7 @@ mod tests {
     #[test]
     fn test_filter_primitive_vector_with_mask() {
         let vec = PrimitiveVector::from(
-            PVectorMut::<i32>::from_iter([100, 200, 300, 400, 500].map(Some)).freeze(),
+            PVector::<i32>::from_iter([100, 200, 300, 400, 500].map(Some)).freeze(),
         );
 
         let mask = Mask::from_iter([true, false, true, false, true]);
@@ -69,7 +69,7 @@ mod tests {
     #[test]
     fn test_filter_primitive_vector_with_mask_indices() {
         let vec = PrimitiveVector::from(
-            PVectorMut::<i32>::from_iter([100, 200, 300, 400, 500].map(Some)).freeze(),
+            PVector::<i32>::from_iter([100, 200, 300, 400, 500].map(Some)).freeze(),
         );
 
         let indices = unsafe { MaskIndices::new_unchecked(&[0, 2, 4]) };
@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn test_filter_primitive_vector_with_nulls() {
         let vec = PrimitiveVector::from(
-            PVectorMut::<i64>::from_iter([Some(1000), None, Some(3000), Some(4000), None]).freeze(),
+            PVector::<i64>::from_iter([Some(1000), None, Some(3000), Some(4000), None]).freeze(),
         );
 
         let mask = Mask::from_iter([true, true, false, true, false]);
@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn test_filter_primitive_vector_all_true() {
         let vec =
-            PrimitiveVector::from(PVectorMut::<i32>::from_iter([100, 200, 300].map(Some)).freeze());
+            PrimitiveVector::from(PVector::<i32>::from_iter([100, 200, 300].map(Some)).freeze());
 
         let mask = Mask::new_true(3);
 
@@ -121,7 +121,7 @@ mod tests {
     #[test]
     fn test_filter_primitive_vector_all_false() {
         let vec =
-            PrimitiveVector::from(PVectorMut::<i32>::from_iter([100, 200, 300].map(Some)).freeze());
+            PrimitiveVector::from(PVector::<i32>::from_iter([100, 200, 300].map(Some)).freeze());
 
         let mask = Mask::new_false(3);
 
@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_filter_primitive_vector_mut_with_mask() {
-        let mut vec = PrimitiveVectorMut::from(PVectorMut::<i32>::from_iter(
+        let mut vec = PrimitiveVector::from(PVector::<i32>::from_iter(
             [100, 200, 300, 400, 500].map(Some),
         ));
 
@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn test_filter_primitive_vector_mut_with_mask_indices() {
-        let mut vec = PrimitiveVectorMut::from(PVectorMut::<i32>::from_iter(
+        let mut vec = PrimitiveVector::from(PVector::<i32>::from_iter(
             [100, 200, 300, 400, 500].map(Some),
         ));
 
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_filter_primitive_vector_mut_with_nulls() {
-        let mut vec = PrimitiveVectorMut::from(PVectorMut::<i64>::from_iter([
+        let mut vec = PrimitiveVector::from(PVector::<i64>::from_iter([
             Some(1000),
             None,
             Some(3000),

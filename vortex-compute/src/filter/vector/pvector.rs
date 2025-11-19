@@ -4,7 +4,7 @@
 use vortex_buffer::{Buffer, BufferMut};
 use vortex_dtype::NativePType;
 use vortex_mask::{Mask, MaskMut};
-use vortex_vector::primitive::{PVector, PVectorMut};
+use vortex_vector::primitive::{PVector, PVector};
 use vortex_vector::{VectorMutOps, VectorOps};
 
 use crate::filter::Filter;
@@ -26,7 +26,7 @@ where
     }
 }
 
-impl<M, T: NativePType> Filter<M> for &mut PVectorMut<T>
+impl<M, T: NativePType> Filter<M> for &mut PVector<T>
 where
     for<'a> &'a mut BufferMut<T>: Filter<M, Output = ()>,
     for<'a> &'a mut MaskMut: Filter<M, Output = ()>,
@@ -46,7 +46,7 @@ where
 impl<M, T: NativePType> Filter<M> for PVector<T>
 where
     for<'a> &'a PVector<T>: Filter<M, Output = PVector<T>>,
-    for<'a> &'a mut PVectorMut<T>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<T>: Filter<M, Output = ()>,
 {
     type Output = Self;
 

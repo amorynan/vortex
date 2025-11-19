@@ -4,13 +4,13 @@
 use std::ops::Mul;
 
 use num_traits::One;
-use vortex_array::ArrayRef;
 use vortex_array::execution::{BatchKernel, BatchKernelRef, BindCtx, MaskExecution};
 use vortex_array::vtable::OperatorVTable;
-use vortex_dtype::{NativePType, match_each_native_ptype};
+use vortex_array::ArrayRef;
+use vortex_dtype::{match_each_native_ptype, NativePType};
 use vortex_error::{VortexExpect, VortexResult};
 use vortex_mask::AllOr;
-use vortex_vector::primitive::PVectorMut;
+use vortex_vector::primitive::PVector;
 use vortex_vector::{Vector, VectorMutOps};
 
 use crate::{SequenceArray, SequenceVTable};
@@ -50,14 +50,14 @@ impl<T: NativePType> BatchKernel for SequenceKernel<T> {
         let selection = self.selection.execute()?;
 
         let elements = match selection.indices() {
-            AllOr::All => PVectorMut::<T>::from_iter((0..selection.len()).map(|i| {
+            AllOr::All => PVector::<T>::from_iter((0..selection.len()).map(|i| {
                 // This should never panic if the SequenceArray was constructed correctly
                 let offset = T::from_usize(i).vortex_expect("Overflow converting usize to ptype");
                 self.base + offset
             })),
-            AllOr::None => PVectorMut::<T>::with_capacity(0),
+            AllOr::None => PVector::<T>::with_capacity(0),
             AllOr::Some(indices) => {
-                PVectorMut::<T>::from_iter(indices.iter().map(|i| {
+                PVector::<T>::from_iter(indices.iter().map(|i| {
                     // This should never panic if the SequenceArray was constructed correctly
                     let offset =
                         T::from_usize(*i).vortex_expect("Overflow converting usize to ptype");
@@ -81,14 +81,14 @@ impl<T: NativePType + Mul> BatchKernel for MultiplierSequenceKernel<T> {
         let selection = self.selection.execute()?;
 
         let elements = match selection.indices() {
-            AllOr::All => PVectorMut::<T>::from_iter((0..selection.len()).map(|i| {
+            AllOr::All => PVector::<T>::from_iter((0..selection.len()).map(|i| {
                 // This should never panic if the SequenceArray was constructed correctly
                 let offset = T::from_usize(i).vortex_expect("Overflow converting usize to ptype");
                 let scaled = self.multiplier * offset;
                 self.base + scaled
             })),
-            AllOr::None => PVectorMut::<T>::with_capacity(0),
-            AllOr::Some(indices) => PVectorMut::<T>::from_iter(indices.iter().map(|&i| {
+            AllOr::None => PVector::<T>::with_capacity(0),
+            AllOr::Some(indices) => PVector::<T>::from_iter(indices.iter().map(|&i| {
                 // This should never panic if the SequenceArray was constructed correctly
                 let offset = T::from_usize(i).vortex_expect("Overflow converting usize to ptype");
                 let scaled = self.multiplier * offset;

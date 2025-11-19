@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Helper methods for [`PVectorMut<T>`] that mimic the behavior of [`std::vec::Vec`].
+//! Helper methods for [`PVector<T>`] that mimic the behavior of [`std::vec::Vec`].
 
 use vortex_dtype::NativePType;
 
-use crate::primitive::PVectorMut;
+use crate::primitive::PVector;
 use crate::VectorMutOps;
 
-/// Point operations for [`PVectorMut`].
-impl<T: NativePType> PVectorMut<T> {
+/// Point operations for [`PVector`].
+impl<T: NativePType> PVector<T> {
     /// Gets a nullable element at the given index, panicking on out-of-bounds.
     ///
     /// If the element at the given index is null, returns `None`. Otherwise, returns `Some(x)`,
@@ -89,7 +89,7 @@ impl<T: NativePType> PVectorMut<T> {
     }
 }
 
-impl<T: NativePType> AsRef<[T]> for PVectorMut<T> {
+impl<T: NativePType> AsRef<[T]> for PVector<T> {
     /// Returns an immutable slice over the internal mutable buffer with elements of type `T`.
     ///
     /// Note that this slice may contain garbage data where the [`validity()`] mask from the frozen
@@ -104,7 +104,7 @@ impl<T: NativePType> AsRef<[T]> for PVectorMut<T> {
     }
 }
 
-impl<T: NativePType> AsMut<[T]> for PVectorMut<T> {
+impl<T: NativePType> AsMut<[T]> for PVector<T> {
     /// Returns a mutable slice over the internal mutable buffer with elements of type `T`.
     ///
     /// Note that this slice may contain garbage data where the [`validity()`] mask from the frozen
@@ -119,8 +119,8 @@ impl<T: NativePType> AsMut<[T]> for PVectorMut<T> {
     }
 }
 
-/// Batch operations for [`PVectorMut`].
-impl<T: NativePType> PVectorMut<T> {
+/// Batch operations for [`PVector`].
+impl<T: NativePType> PVector<T> {
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the difference, with each
@@ -158,15 +158,13 @@ impl<T: NativePType> PVectorMut<T> {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::VectorOps;
 
     #[test]
     fn test_get_methods() {
-        let vec = PVectorMut::from_iter([Some(1), None, Some(3), None, Some(5)]);
+        let vec = PVector::from_iter([Some(1), None, Some(3), None, Some(5)]);
 
         // Test get_checked - bounds and nulls.
         assert_eq!(vec.get(0), Some(1));
@@ -179,24 +177,18 @@ mod tests {
 
         assert_eq!(vec.elements()[0], 1);
         assert_eq!(vec.elements()[2], 3);
-
-        // Also test PVector methods.
-        let frozen = vec.freeze();
-        assert_eq!(frozen.get(0), Some(&1));
-        assert_eq!(frozen.get(1), None);
-        assert_eq!(frozen.get(2), Some(&3));
     }
 
     #[test]
     #[should_panic(expected = "index out of bounds")]
     fn test_get_panic() {
-        let vec = PVectorMut::from_iter([Some(1), Some(2)]);
+        let vec = PVector::from_iter([Some(1), Some(2)]);
         let _ = vec.get(10);
     }
 
     #[test]
     fn test_push_variants() {
-        let mut vec = PVectorMut::<i32>::with_capacity(10);
+        let mut vec = PVector::<i32>::with_capacity(10);
         vec.push(1);
         vec.push_opt(None);
         vec.push_opt(Some(3));
@@ -205,18 +197,11 @@ mod tests {
         assert_eq!(vec.get(0), Some(1));
         assert_eq!(vec.get(1), None);
         assert_eq!(vec.get(2), Some(3));
-
-        // Test push_unchecked with pre-reserved capacity.
-        vec.reserve(1);
-        unsafe {
-            vec.push_unchecked(4);
-        }
-        assert_eq!(vec.get(3), Some(4));
     }
 
     #[test]
     fn test_resize_operations() {
-        let mut vec = PVectorMut::from_iter([1i32, 2, 3]);
+        let mut vec = PVector::from_iter([1i32, 2, 3]);
 
         // Grow with valid values.
         vec.resize(5, Some(99));
@@ -237,25 +222,8 @@ mod tests {
     }
 
     #[test]
-    fn test_clear_truncate() {
-        let mut vec = PVectorMut::from_iter([Some(1), None, Some(3), None, Some(5)]);
-        let cap = vec.capacity();
-
-        vec.truncate(3);
-        assert_eq!(vec.len(), 3);
-        assert!(vec.capacity() >= cap); // Capacity preserved.
-
-        vec.truncate(10); // Truncate beyond length - no-op.
-        assert_eq!(vec.len(), 3);
-
-        vec.clear();
-        assert_eq!(vec.len(), 0);
-        assert!(vec.capacity() >= cap); // Capacity still preserved.
-    }
-
-    #[test]
     fn test_slice_access() {
-        let mut vec = PVectorMut::from_iter([Some(1i32), None, Some(3)]);
+        let mut vec = PVector::from_iter([Some(1i32), None, Some(3)]);
         let slice = vec.as_ref();
         assert_eq!(slice[0], 1);
         assert_eq!(slice[2], 3);
@@ -264,33 +232,31 @@ mod tests {
         let mut_slice = vec.as_mut();
         mut_slice[0] = 10;
         assert_eq!(vec.get(0), Some(10));
-
-        let frozen = vec.freeze();
-        assert_eq!(frozen.as_ref()[0], 10);
+        assert_eq!(vec.as_ref()[0], 10);
     }
 
     #[test]
     fn test_from_iter_variants() {
         // FromIterator<T> - all non-null.
-        let vec1 = PVectorMut::from_iter([1i32, 2, 3]);
+        let vec1 = PVector::from_iter([1i32, 2, 3]);
         assert_eq!(vec1.len(), 3);
-        assert!(vec1.freeze().validity().all_true());
+        assert_eq!(vec1.validity().true_count(), 3);
 
         // FromIterator<Option<T>> - mixed null/non-null.
-        let vec2 = PVectorMut::from_iter([Some(1i32), None, Some(3)]);
+        let vec2 = PVector::from_iter([Some(1i32), None, Some(3)]);
         assert_eq!(vec2.len(), 3);
-        assert_eq!(vec2.freeze().validity().true_count(), 2);
+        assert_eq!(vec2.validity().true_count(), 2);
 
         // Empty iterators.
-        let empty1 = PVectorMut::from_iter::<[i32; 0]>([]);
-        let empty2 = PVectorMut::<i32>::from_iter(std::iter::empty::<Option<i32>>());
+        let empty1 = PVector::from_iter::<[i32; 0]>([]);
+        let empty2 = PVector::<i32>::from_iter(std::iter::empty::<Option<i32>>());
         assert_eq!(empty1.len(), 0);
         assert_eq!(empty2.len(), 0);
     }
 
     #[test]
     fn test_extend_operations() {
-        let mut vec = PVectorMut::from_iter([1i32, 2]);
+        let mut vec = PVector::from_iter([1i32, 2]);
 
         // Extend<T> - all non-null.
         vec.extend([3, 4]);
@@ -311,11 +277,11 @@ mod tests {
 
     #[test]
     fn test_empty_vector_edge_cases() {
-        let empty = PVectorMut::<i32>::with_capacity(0);
+        let empty = PVector::<i32>::with_capacity(0);
         assert_eq!(empty.len(), 0);
         assert_eq!(empty.as_ref().len(), 0);
 
-        let mut mutable_empty = PVectorMut::<i32>::with_capacity(0);
+        let mut mutable_empty = PVector::<i32>::with_capacity(0);
         mutable_empty.clear(); // No-op on empty.
         mutable_empty.truncate(0); // No-op.
         mutable_empty.resize(0, None); // No-op.
@@ -325,7 +291,7 @@ mod tests {
     #[test]
     fn test_complex_workflow() {
         // Integration test combining multiple operations.
-        let mut vec = PVectorMut::<i32>::with_capacity(2);
+        let mut vec = PVector::<i32>::with_capacity(2);
         vec.extend([1, 2]); // Extend<T>.
         vec.push_opt(None);
         vec.resize(5, Some(99));
@@ -333,12 +299,11 @@ mod tests {
         vec.extend([Some(10), None]); // Extend<Option<T>>.
 
         assert_eq!(vec.len(), 6);
-        let frozen = vec.freeze();
-        assert_eq!(frozen.validity().true_count(), 4);
-        assert_eq!(frozen.get(0), Some(&1));
-        assert_eq!(frozen.get(2), None);
-        assert_eq!(frozen.get(3), Some(&99));
-        assert_eq!(frozen.get(5), None);
+        assert_eq!(vec.validity().true_count(), 4);
+        assert_eq!(vec.get(0), Some(1));
+        assert_eq!(vec.get(2), None);
+        assert_eq!(vec.get(3), Some(99));
+        assert_eq!(vec.get(5), None);
     }
 
     #[test]
@@ -356,7 +321,7 @@ mod tests {
         ];
 
         // Create vector from iterator.
-        let vec = PVectorMut::<i32>::from_iter(original_data.clone());
+        let vec = PVector::<i32>::from_iter(original_data.clone());
 
         // Convert back to iterator and collect.
         let roundtrip: Vec<_> = vec.into_iter().collect();
@@ -366,16 +331,15 @@ mod tests {
 
         // Also test with all valid values.
         let all_valid = vec![1, 2, 3, 4, 5];
-        let vec = PVectorMut::<i32>::from_iter(all_valid.clone());
+        let vec = PVector::<i32>::from_iter(all_valid.clone());
         let roundtrip: Vec<_> = vec.into_iter().collect();
         let expected: Vec<_> = all_valid.into_iter().map(Some).collect();
         assert_eq!(roundtrip, expected);
 
         // Test with empty.
         let empty: Vec<Option<i32>> = vec![];
-        let vec = PVectorMut::<i32>::from_iter(empty.clone());
+        let vec = PVector::<i32>::from_iter(empty.clone());
         let roundtrip: Vec<_> = vec.into_iter().collect();
         assert_eq!(roundtrip, empty);
     }
 }
-*/

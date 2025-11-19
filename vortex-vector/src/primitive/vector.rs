@@ -3,20 +3,17 @@
 
 //! Definition and implementation of [`PrimitiveVector`].
 
-use std::fmt::Debug;
-use std::ops::RangeBounds;
-
 use vortex_dtype::half::f16;
 use vortex_dtype::{NativePType, PType, PTypeDowncast, PTypeUpcast};
 use vortex_error::vortex_panic;
 use vortex_mask::Mask;
 
-use crate::primitive::{PVector, PrimitiveVectorMut};
-use crate::{Scalar, VectorOps, match_each_pvector};
+use crate::primitive::PVector;
+use crate::{match_each_pvector_mut, Cow, VectorMutOps};
 
-/// An immutable vector of primitive values.
+/// A mutable vector of primitive values.
 ///
-/// The mutable equivalent of this type is [`PrimitiveVectorMut`].
+/// The immutable equivalent of this type is [`PrimitiveVector`].
 ///
 /// `PrimitiveVector` is represented by an enum over all possible [`PVector`] types (which are
 /// templated by the types that implement [`NativePType`]).
@@ -65,37 +62,77 @@ impl PrimitiveVector {
             Self::F64(_) => PType::F64,
         }
     }
+
+    /// Create a new mutable primitive vector with the given primitive type and capacity.
+    pub fn with_capacity(ptype: PType, capacity: usize) -> Self {
+        match ptype {
+            PType::U8 => PVector::<u8>::with_capacity(capacity).into(),
+            PType::U16 => PVector::<u16>::with_capacity(capacity).into(),
+            PType::U32 => PVector::<u32>::with_capacity(capacity).into(),
+            PType::U64 => PVector::<u64>::with_capacity(capacity).into(),
+            PType::I8 => PVector::<i8>::with_capacity(capacity).into(),
+            PType::I16 => PVector::<i16>::with_capacity(capacity).into(),
+            PType::I32 => PVector::<i32>::with_capacity(capacity).into(),
+            PType::I64 => PVector::<i64>::with_capacity(capacity).into(),
+            PType::F16 => PVector::<f16>::with_capacity(capacity).into(),
+            PType::F32 => PVector::<f32>::with_capacity(capacity).into(),
+            PType::F64 => PVector::<f64>::with_capacity(capacity).into(),
+        }
+    }
 }
 
-impl VectorOps for PrimitiveVector {
-    type Mutable = PrimitiveVectorMut;
-
+impl VectorMutOps for PrimitiveVector {
     fn len(&self) -> usize {
-        match_each_pvector!(self, |v| { v.len() })
+        match_each_pvector_mut!(self, |v| { v.len() })
     }
 
-    fn validity(&self) -> &Mask {
-        match_each_pvector!(self, |v| { v.validity() })
+    fn validity(&self) -> &Cow<Mask> {
+        match_each_pvector_mut!(self, |v| { v.validity() })
     }
 
-    fn scalar_at(&self, index: usize) -> Scalar {
-        match_each_pvector!(self, |v| { v.scalar_at(index) })
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        unsafe { match_each_pvector_mut!(self, |v| { v.validity_mut() }) }
     }
 
-    fn slice(&self, range: impl RangeBounds<usize> + Clone + Debug) -> Self {
-        match_each_pvector!(self, |v| { v.slice(range).into() })
+    fn clear(&mut self) {
+        match_each_pvector_mut!(self, |v| { v.clear() })
     }
 
-    fn try_into_mut(self) -> Result<PrimitiveVectorMut, Self> {
-        match_each_pvector!(self, |v| {
-            v.try_into_mut()
-                .map(PrimitiveVectorMut::from)
-                .map_err(Self::from)
-        })
+    fn truncate(&mut self, len: usize) {
+        match_each_pvector_mut!(self, |v| { v.truncate(len) })
     }
 
-    fn into_mut(self) -> PrimitiveVectorMut {
-        match_each_pvector!(self, |v| { v.into_mut().into() })
+    fn append_zeros(&mut self, n: usize) {
+        match_each_pvector_mut!(self, |v| { v.append_zeros(n) })
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        match_each_pvector_mut!(self, |v| { v.append_nulls(n) })
+    }
+
+    fn ensure_frozen(&mut self) {
+        match_each_pvector_mut!(self, |v| { v.ensure_frozen() })
+    }
+
+    fn split_off(&mut self, at: usize) -> Self {
+        match_each_pvector_mut!(self, |v| { v.split_off(at).into() })
+    }
+
+    fn unsplit(&mut self, other: Self) {
+        match (self, other) {
+            (Self::U8(a), Self::U8(b)) => a.unsplit(b),
+            (Self::U16(a), Self::U16(b)) => a.unsplit(b),
+            (Self::U32(a), Self::U32(b)) => a.unsplit(b),
+            (Self::U64(a), Self::U64(b)) => a.unsplit(b),
+            (Self::I8(a), Self::I8(b)) => a.unsplit(b),
+            (Self::I16(a), Self::I16(b)) => a.unsplit(b),
+            (Self::I32(a), Self::I32(b)) => a.unsplit(b),
+            (Self::I64(a), Self::I64(b)) => a.unsplit(b),
+            (Self::F16(a), Self::F16(b)) => a.unsplit(b),
+            (Self::F32(a), Self::F32(b)) => a.unsplit(b),
+            (Self::F64(a), Self::F64(b)) => a.unsplit(b),
+            _ => vortex_panic!("Mismatched primitive vector types"),
+        }
     }
 }
 
@@ -154,157 +191,215 @@ impl PTypeDowncast for PrimitiveVector {
         if let Self::U8(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::U8, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::U8, got {self:?}");
     }
 
     fn into_u16(self) -> Self::Output<u16> {
         if let Self::U16(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::U16, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::U16, got {self:?}");
     }
 
     fn into_u32(self) -> Self::Output<u32> {
         if let Self::U32(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::U32, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::U32, got {self:?}");
     }
 
     fn into_u64(self) -> Self::Output<u64> {
         if let Self::U64(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::U64, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::U64, got {self:?}");
     }
 
     fn into_i8(self) -> Self::Output<i8> {
         if let Self::I8(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::I8, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::I8, got {self:?}");
     }
 
     fn into_i16(self) -> Self::Output<i16> {
         if let Self::I16(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::I16, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::I16, got {self:?}");
     }
 
     fn into_i32(self) -> Self::Output<i32> {
         if let Self::I32(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::I32, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::I32, got {self:?}");
     }
 
     fn into_i64(self) -> Self::Output<i64> {
         if let Self::I64(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::I64, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::I64, got {self:?}");
     }
 
     fn into_f16(self) -> Self::Output<f16> {
         if let Self::F16(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::F16, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::F16, got {self:?}");
     }
 
     fn into_f32(self) -> Self::Output<f32> {
         if let Self::F32(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::F32, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::F32, got {self:?}");
     }
 
     fn into_f64(self) -> Self::Output<f64> {
         if let Self::F64(v) = self {
             return v;
         }
-        vortex_panic!("Expected PrimitiveVector::F64, got {self:?}");
+        vortex_panic!("Expected PrimitiveVectorMut::F64, got {self:?}");
     }
 }
 
-impl<'a> PTypeDowncast for &'a PrimitiveVector {
-    type Output<T: NativePType> = &'a PVector<T>;
+impl<'a> PTypeDowncast for &'a mut PrimitiveVector {
+    type Output<T: NativePType> = &'a mut PVector<T>;
 
     fn into_u8(self) -> Self::Output<u8> {
-        if let PrimitiveVector::U8(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::U8(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::U8, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::U8, got {self:?}");
     }
 
     fn into_u16(self) -> Self::Output<u16> {
-        if let PrimitiveVector::U16(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::U16(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::U16, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::U16, got {self:?}");
     }
 
     fn into_u32(self) -> Self::Output<u32> {
-        if let PrimitiveVector::U32(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::U32(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::U32, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::U32, got {self:?}");
     }
 
     fn into_u64(self) -> Self::Output<u64> {
-        if let PrimitiveVector::U64(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::U64(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::U64, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::U64, got {self:?}");
     }
 
     fn into_i8(self) -> Self::Output<i8> {
-        if let PrimitiveVector::I8(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::I8(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::I8, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::I8, got {self:?}");
     }
 
     fn into_i16(self) -> Self::Output<i16> {
-        if let PrimitiveVector::I16(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::I16(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::I16, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::I16, got {self:?}");
     }
 
     fn into_i32(self) -> Self::Output<i32> {
-        if let PrimitiveVector::I32(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::I32(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::I32, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::I32, got {self:?}");
     }
 
     fn into_i64(self) -> Self::Output<i64> {
-        if let PrimitiveVector::I64(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::I64(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::I64, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::I64, got {self:?}");
     }
 
     fn into_f16(self) -> Self::Output<f16> {
-        if let PrimitiveVector::F16(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::F16(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::F16, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::F16, got {self:?}");
     }
 
     fn into_f32(self) -> Self::Output<f32> {
-        if let PrimitiveVector::F32(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::F32(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::F32, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::F32, got {self:?}");
     }
 
     fn into_f64(self) -> Self::Output<f64> {
-        if let PrimitiveVector::F64(v) = self {
-            return v;
+        match self {
+            PrimitiveVector::F64(v) => v,
+            _ => vortex_panic!("Expected PrimitiveVectorMut::F64, got {self:?}"),
         }
-        vortex_panic!("Expected PrimitiveVector::F64, got {self:?}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::VectorMutOps;
+
+    #[test]
+    fn test_from_iter_with_options() {
+        // Test FromIterator<Option<T>> with different types.
+        let vec_i32: PrimitiveVector =
+            PVector::<i32>::from_iter(vec![Some(1), None, Some(3), None, Some(5)]).into();
+        assert_eq!(vec_i32.len(), 5);
+        assert_eq!(vec_i32.validity().true_count(), 3);
+
+        // Test empty iterator.
+        let vec_empty: PrimitiveVector =
+            PVector::<f64>::from_iter(std::iter::empty::<Option<f64>>()).into();
+        assert_eq!(vec_empty.len(), 0);
+
+        // Test that None values use T::default().
+        let vec_nulls: PrimitiveVector = PVector::<i32>::from_iter([None, None, None]).into();
+        // Check that validity is all false for nulls.
+        assert_eq!(vec_nulls.validity().true_count(), 0);
+    }
+
+    #[test]
+    fn test_from_iter_non_null() {
+        // Test FromIterator<T> for different primitive types.
+        let vec_f64: PrimitiveVector = PVector::<f64>::from_iter([1.5, 2.5, 3.5, 4.5, 5.5]).into();
+        assert_eq!(vec_f64.len(), 5);
+        assert_eq!(vec_f64.validity().true_count(), 5); // All valid.
+
+        let vec_u16: PrimitiveVector = PVector::<u16>::from_iter([1u16, 2, 3, 4, 5]).into();
+        assert_eq!(vec_u16.len(), 5);
+        assert_eq!(vec_u16.validity().true_count(), 5);
+    }
+
+    #[test]
+    fn test_operations_preserve_validity() {
+        // Test split/unsplit/extend with different primitive types.
+        let mut vec: PrimitiveVector =
+            PVector::<i64>::from_iter([Some(100), None, Some(300), None, Some(500)]).into();
+
+        let second_half = vec.split_off(2);
+        assert_eq!(vec.len(), 2);
+        assert_eq!(second_half.len(), 3);
+
+        assert_eq!(vec.validity().true_count(), 1);
+        assert_eq!(second_half.validity().true_count(), 2);
+
+        // Test unsplit.
+        let mut vec1: PrimitiveVector = PVector::<u32>::from_iter([Some(1000), None]).into();
+        let vec2: PrimitiveVector = PVector::<u32>::from_iter([None, Some(2000)]).into();
+        vec1.unsplit(vec2);
+        assert_eq!(vec1.len(), 4);
+        assert_eq!(vec1.validity().true_count(), 2);
     }
 }

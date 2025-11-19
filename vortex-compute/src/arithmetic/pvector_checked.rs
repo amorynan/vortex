@@ -5,7 +5,7 @@ use std::ops::BitAnd;
 
 use vortex_buffer::{Buffer, BufferMut};
 use vortex_dtype::NativePType;
-use vortex_vector::primitive::{PVector, PVectorMut};
+use vortex_vector::primitive::{PVector, PVector};
 use vortex_vector::{VectorMutOps, VectorOps};
 
 use crate::arithmetic::CheckedArithmetic;
@@ -14,7 +14,7 @@ use crate::arithmetic::CheckedArithmetic;
 impl<Op, T> CheckedArithmetic<Op, &PVector<T>> for PVector<T>
 where
     T: NativePType,
-    PVectorMut<T>: for<'a> CheckedArithmetic<Op, &'a PVector<T>, Output = PVector<T>>,
+    PVector<T>: for<'a> CheckedArithmetic<Op, &'a PVector<T>, Output = PVector<T>>,
     for<'a> &'a PVector<T>: CheckedArithmetic<Op, &'a PVector<T>, Output = PVector<T>>,
 {
     type Output = PVector<T>;
@@ -28,7 +28,7 @@ where
 }
 
 /// Implementation that operates in-place over a mutable vector.
-impl<Op, T> CheckedArithmetic<Op, &PVector<T>> for PVectorMut<T>
+impl<Op, T> CheckedArithmetic<Op, &PVector<T>> for PVector<T>
 where
     T: NativePType,
     BufferMut<T>: for<'a> CheckedArithmetic<Op, &'a Buffer<T>, Output = Buffer<T>>,
@@ -74,7 +74,7 @@ where
 impl<Op, T> CheckedArithmetic<Op, &T> for PVector<T>
 where
     T: NativePType,
-    PVectorMut<T>: for<'a> CheckedArithmetic<Op, &'a T, Output = PVector<T>>,
+    PVector<T>: for<'a> CheckedArithmetic<Op, &'a T, Output = PVector<T>>,
     for<'a> &'a PVector<T>: CheckedArithmetic<Op, &'a T, Output = PVector<T>>,
 {
     type Output = PVector<T>;
@@ -88,7 +88,7 @@ where
 }
 
 /// Implementation that operates in-place over a mutable vector against a scalar RHS value.
-impl<Op, T> CheckedArithmetic<Op, &T> for PVectorMut<T>
+impl<Op, T> CheckedArithmetic<Op, &T> for PVector<T>
 where
     T: NativePType,
     BufferMut<T>: for<'a> CheckedArithmetic<Op, &'a T, Output = Buffer<T>>,
@@ -123,8 +123,8 @@ where
 mod tests {
     use vortex_buffer::buffer;
     use vortex_mask::Mask;
-    use vortex_vector::VectorOps;
     use vortex_vector::primitive::PVector;
+    use vortex_vector::VectorOps;
 
     use crate::arithmetic::{Add, CheckedArithmetic, Div, Mul, Sub};
 

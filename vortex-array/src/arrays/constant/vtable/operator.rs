@@ -10,7 +10,7 @@ use vortex_vector::binaryview::{BinaryVector, StringVector};
 use vortex_vector::bool::BoolVector;
 use vortex_vector::decimal::{DVector, DecimalVector};
 use vortex_vector::null::NullVectorMut;
-use vortex_vector::primitive::{PVectorMut, PrimitiveVectorMut};
+use vortex_vector::primitive::{PVector, PrimitiveVector};
 use vortex_vector::{VectorMut, VectorMutOps};
 
 use crate::arrays::{ConstantArray, ConstantVTable};
@@ -59,9 +59,9 @@ fn to_vector_bool(scalar: BoolScalar, len: usize) -> BoolVector {
     vec
 }
 
-fn to_vector_primitive(scalar: PrimitiveScalar, len: usize) -> PrimitiveVectorMut {
+fn to_vector_primitive(scalar: PrimitiveScalar, len: usize) -> PrimitiveVector {
     match_each_native_ptype!(scalar.ptype(), |T| {
-        let mut vec = PVectorMut::<T>::with_capacity(len);
+        let mut vec = PVector::<T>::with_capacity(len);
         match scalar.typed_value::<T>() {
             Some(v) => vec.append_values(v, len),
             None => vec.append_nulls(len),

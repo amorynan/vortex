@@ -5,7 +5,7 @@ use std::ops::BitAnd;
 
 use vortex_buffer::{Buffer, BufferMut};
 use vortex_dtype::NativePType;
-use vortex_vector::primitive::PVectorMut;
+use vortex_vector::primitive::PVector;
 use vortex_vector::VectorMutOps;
 
 use crate::arithmetic::{Arithmetic, Operator};
@@ -27,7 +27,7 @@ where
 }
 
 /// Implementation that operates in-place over a mutable vector.
-impl<Op, T> Arithmetic<Op, &PVector<T>> for PVectorMut<T>
+impl<Op, T> Arithmetic<Op, &PVector<T>> for PVector<T>
 where
     T: NativePType,
     Op: Operator<T>,
@@ -76,7 +76,7 @@ impl<Op, T> Arithmetic<Op, &T> for PVector<T>
 where
     T: NativePType,
     Op: Operator<T>,
-    PVectorMut<T>: for<'a> Arithmetic<Op, &'a T, Output = PVector<T>>,
+    PVector<T>: for<'a> Arithmetic<Op, &'a T, Output = PVector<T>>,
 {
     type Output = PVector<T>;
 
@@ -89,7 +89,7 @@ where
 }
 
 /// Implementation that operates in-place over a mutable vector against a scalar RHS value.
-impl<Op, T> Arithmetic<Op, &T> for PVectorMut<T>
+impl<Op, T> Arithmetic<Op, &T> for PVector<T>
 where
     T: NativePType,
     Op: Operator<T>,

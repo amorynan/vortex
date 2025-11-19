@@ -4,13 +4,13 @@
 use fastlanes::{BitPacking, FastLanes};
 use static_assertions::const_assert_eq;
 use vortex_array::pipeline::{
-    BindContext, BitView, Kernel, KernelCtx, N, PipelineInputs, PipelinedNode,
+    BindContext, BitView, Kernel, KernelCtx, PipelineInputs, PipelinedNode, N,
 };
 use vortex_buffer::Buffer;
-use vortex_dtype::{PTypeDowncastExt, PhysicalPType, match_each_integer_ptype};
+use vortex_dtype::{match_each_integer_ptype, PTypeDowncastExt, PhysicalPType};
 use vortex_error::VortexResult;
 use vortex_mask::Mask;
-use vortex_vector::primitive::PVectorMut;
+use vortex_vector::primitive::PVector;
 use vortex_vector::{VectorMut, VectorMutOps};
 
 use crate::BitPackedArray;
@@ -123,7 +123,7 @@ impl<BP: PhysicalPType<Physical: BitPacking>> Kernel for AlignedBitPackedKernel<
         selection: &BitView,
         out: &mut VectorMut,
     ) -> VortexResult<()> {
-        let output_vector: &mut PVectorMut<BP::Physical> = out.as_primitive_mut().downcast();
+        let output_vector: &mut PVector<BP::Physical> = out.as_primitive_mut().downcast();
         debug_assert!(output_vector.is_empty());
 
         let packed_offset = self.num_chunks_unpacked * self.packed_stride;

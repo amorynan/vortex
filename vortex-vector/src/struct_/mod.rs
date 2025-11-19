@@ -10,7 +10,7 @@
 //! ```
 //! use vortex_vector::bool::BoolVector;
 //! use vortex_vector::null::NullVectorMut;
-//! use vortex_vector::primitive::PVectorMut;
+//! use vortex_vector::primitive::PVector;
 //! use vortex_vector::struct_::StructVectorMut;
 //! use vortex_vector::{VectorMut, VectorMutOps};
 //! use vortex_mask::MaskMut;
@@ -19,7 +19,7 @@
 //! let fields = Box::new([
 //!     NullVectorMut::new(3).into(),
 //!     BoolVector::from_iter([true, false, true]).into(),
-//!     PVectorMut::<i32>::from_iter([10, 20, 30]).into(),
+//!     PVector::<i32>::from_iter([10, 20, 30]).into(),
 //! ]);
 //!
 //! let mut struct_vec = StructVectorMut::new(fields, MaskMut::new_true(3));
@@ -34,14 +34,14 @@
 //! ```
 //! use vortex_vector::bool::BoolVector;
 //! use vortex_vector::null::NullVectorMut;
-//! use vortex_vector::primitive::PVectorMut;
+//! use vortex_vector::primitive::PVector;
 //! use vortex_vector::struct_::StructVectorMut;
 //! use vortex_vector::{VectorMut, VectorMutOps};
 //! use vortex_mask::MaskMut;
 //!
 //! let fields = Box::new([
 //!     NullVectorMut::new(6).into(),
-//!     PVectorMut::<i32>::from_iter([1, 2, 3, 4, 5, 6]).into(),
+//!     PVector::<i32>::from_iter([1, 2, 3, 4, 5, 6]).into(),
 //! ]);
 //!
 //! let mut struct_vec = StructVectorMut::new(fields, MaskMut::new_true(6));
@@ -62,7 +62,7 @@
 //! ```
 //! use vortex_vector::bool::BoolVector;
 //! use vortex_vector::null::NullVectorMut;
-//! use vortex_vector::primitive::PVectorMut;
+//! use vortex_vector::primitive::PVector;
 //! use vortex_vector::struct_::StructVectorMut;
 //! use vortex_vector::{VectorMut, VectorMutOps};
 //! use vortex_mask::MaskMut;
@@ -71,7 +71,7 @@
 //! let fields = Box::new([
 //!     NullVectorMut::new(3).into(),
 //!     BoolVector::from_iter([true, false, true]).into(),
-//!     PVectorMut::<i32>::from_iter([10, 20, 30]).into(),
+//!     PVector::<i32>::from_iter([10, 20, 30]).into(),
 //! ]);
 //!
 //! let struct_vec = StructVectorMut::new(fields, MaskMut::new_true(3));

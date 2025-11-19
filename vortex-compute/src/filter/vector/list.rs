@@ -4,9 +4,9 @@
 use std::sync::Arc;
 
 use vortex_mask::{Mask, MaskMut};
-use vortex_vector::VectorOps;
 use vortex_vector::listview::{ListViewVector, ListViewVectorMut};
-use vortex_vector::primitive::{PrimitiveVector, PrimitiveVectorMut};
+use vortex_vector::primitive::{PrimitiveVector, PrimitiveVector};
+use vortex_vector::VectorOps;
 
 use crate::filter::Filter;
 
@@ -31,7 +31,7 @@ where
 
 impl<M> Filter<M> for &mut ListViewVectorMut
 where
-    for<'a> &'a mut PrimitiveVectorMut: Filter<M, Output = ()>,
+    for<'a> &'a mut PrimitiveVector: Filter<M, Output = ()>,
     for<'a> &'a mut MaskMut: Filter<M, Output = ()>,
 {
     type Output = ();
