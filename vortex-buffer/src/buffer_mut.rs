@@ -9,7 +9,7 @@ use std::ops::{Deref, DerefMut};
 
 use bytes::buf::UninitSlice;
 use bytes::{Buf, BufMut, BytesMut};
-use vortex_error::{vortex_panic, VortexExpect};
+use vortex_error::{VortexExpect, vortex_panic};
 
 use crate::debug::TruncatedDebug;
 use crate::trusted_len::TrustedLen;
@@ -108,16 +108,6 @@ impl<T> BufferMut<T> {
         buffer.extend_from_slice(other);
         debug_assert_eq!(buffer.alignment(), alignment);
         buffer
-    }
-
-    /// Return the [`ByteBufferMut`] for this [`BufferMut<T>`].
-    pub fn into_byte_buffer(self) -> ByteBufferMut {
-        ByteBufferMut {
-            bytes: self.bytes,
-            length: self.length * size_of::<T>(),
-            alignment: self.alignment,
-            _marker: Default::default(),
-        }
     }
 
     /// Get the alignment of the buffer.
@@ -399,6 +389,16 @@ impl<T> BufferMut<T> {
         }
         self.bytes.unsplit(other.bytes);
         self.length += other.length;
+    }
+
+    /// Return the [`ByteBufferMut`] for this [`BufferMut`].
+    pub fn into_byte_buffer(self) -> ByteBufferMut {
+        ByteBufferMut {
+            bytes: self.bytes,
+            length: self.length * size_of::<T>(),
+            alignment: self.alignment,
+            _marker: Default::default(),
+        }
     }
 
     /// Freeze the `BufferMut` into a `Buffer`.
@@ -743,7 +743,7 @@ impl Write for ByteBufferMut {
 mod test {
     use bytes::{Buf, BufMut};
 
-    use crate::{buffer_mut, Alignment, BufferMut, ByteBufferMut};
+    use crate::{Alignment, BufferMut, ByteBufferMut, buffer_mut};
 
     #[test]
     fn capacity() {

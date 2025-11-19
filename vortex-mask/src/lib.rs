@@ -110,7 +110,7 @@ pub enum Mask {
 
 impl Default for Mask {
     fn default() -> Self {
-        Self::AllFalse(0)
+        Self::new_true(0)
     }
 }
 

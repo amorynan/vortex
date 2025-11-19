@@ -5,13 +5,13 @@ use std::ops::{BitAnd, BitOr, BitXor, Not, RangeBounds};
 
 use crate::bit::ops::{bitwise_binary_op, bitwise_unary_op};
 use crate::bit::{
-    get_bit_unchecked, BitChunks, BitIndexIterator, BitIterator, BitSliceIterator,
-    UnalignedBitChunk,
+    BitChunks, BitIndexIterator, BitIterator, BitSliceIterator, UnalignedBitChunk,
+    get_bit_unchecked,
 };
-use crate::{buffer, Alignment, BitBufferMut, Buffer, ByteBuffer};
+use crate::{Alignment, BitBufferMut, Buffer, ByteBuffer, buffer};
 
 /// An immutable bitset stored as a packed byte buffer.
-#[derive(Debug, Default, Clone, Eq)]
+#[derive(Debug, Clone, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BitBuffer {
     buffer: ByteBuffer,
@@ -69,6 +69,11 @@ impl BitBuffer {
         // BitBuffers make no assumptions on byte alignment, so we strip any alignment.
         let buffer = buffer.aligned(Alignment::none());
 
+        // Slice the buffer to ensure the offset is within the first byte
+        let byte_offset = offset / 8;
+        let offset = offset % 8;
+        let buffer = buffer.slice(byte_offset..);
+
         Self {
             buffer,
             offset,
@@ -114,9 +119,16 @@ impl BitBuffer {
         }
     }
 
-    /// Invokes `f` with indexes `0..len` collecting the boolean results into a new `BitBuffer`
+    /// Invokes `f` with indexes `0..len` collecting the boolean results into a new [`BitBuffer`].
     pub fn collect_bool<F: FnMut(usize) -> bool>(len: usize, f: F) -> Self {
         BitBufferMut::collect_bool(len, f).freeze()
+    }
+
+    /// Clear all bits in the buffer, preserving existing capacity.
+    pub fn clear(&mut self) {
+        self.buffer.clear();
+        self.len = 0;
+        self.offset = 0;
     }
 
     /// Get the logical length of this `BoolBuffer`.
@@ -144,13 +156,6 @@ impl BitBuffer {
     #[inline(always)]
     pub fn inner(&self) -> &ByteBuffer {
         &self.buffer
-    }
-
-    /// Clears the buffer, removing all data.
-    pub fn clear(&mut self) {
-        self.buffer.clear();
-        self.len = 0;
-        self.offset = 0;
     }
 
     /// Retrieve the value at the given index.
@@ -462,7 +467,7 @@ mod tests {
     use rstest::rstest;
 
     use crate::bit::BitBuffer;
-    use crate::{buffer, ByteBuffer};
+    use crate::{ByteBuffer, buffer};
 
     #[test]
     fn test_bool() {
@@ -535,7 +540,9 @@ mod tests {
     fn test_slice_offset_calculation() {
         let buf = BitBuffer::collect_bool(16, |_| true);
         let sliced = buf.slice(10..16);
-        assert_eq!(sliced.offset(), 10);
+        assert_eq!(sliced.len(), 6);
+        // Ensure the offset is modulo 8
+        assert_eq!(sliced.offset(), 2);
     }
 
     #[rstest]

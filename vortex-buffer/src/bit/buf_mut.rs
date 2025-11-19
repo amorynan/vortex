@@ -7,7 +7,7 @@ use arrow_buffer::bit_chunk_iterator::{BitChunks, UnalignedBitChunk};
 use bitvec::view::BitView;
 
 use crate::bit::{get_bit_unchecked, ops, set_bit_unchecked, unset_bit_unchecked};
-use crate::{buffer_mut, BitBuffer, BufferMut, ByteBufferMut};
+use crate::{BitBuffer, BufferMut, ByteBufferMut, buffer_mut};
 
 /// A mutable bitset buffer that allows random access to individual bits for set and get.
 ///
@@ -28,7 +28,7 @@ use crate::{buffer_mut, BitBuffer, BufferMut, ByteBufferMut};
 /// ```
 ///
 /// See also: [`BitBuffer`].
-#[derive(Debug, Default, Clone, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct BitBufferMut {
     buffer: ByteBufferMut,
     /// Represents the offset of the bit buffer into the first byte.
@@ -117,7 +117,7 @@ impl BitBufferMut {
         }
     }
 
-    /// Invokes `f` with indexes `0..len` collecting the boolean results into a new `BitBuffer`
+    /// Invokes `f` with indexes `0..len` collecting the boolean results into a new `BitBufferMut`
     pub fn collect_bool<F: FnMut(usize) -> bool>(len: usize, mut f: F) -> Self {
         let mut buffer = BufferMut::with_capacity(len.div_ceil(64) * 8);
 
@@ -268,6 +268,7 @@ impl BitBufferMut {
     /// Set a position to `false`.
     ///
     /// This operation is checked so if `index` exceeds the buffer length, this will panic.
+    #[inline]
     pub fn unset(&mut self, index: usize) {
         assert!(index < self.len, "index {index} exceeds len {}", self.len);
 
@@ -294,7 +295,8 @@ impl BitBufferMut {
     /// # Safety
     ///
     /// The caller must ensure that `index` does not exceed the largest bit index in the backing buffer.
-    unsafe fn unset_unchecked(&mut self, index: usize) {
+    #[inline]
+    pub unsafe fn unset_unchecked(&mut self, index: usize) {
         // SAFETY: checked by caller
         unsafe { unset_bit_unchecked(self.buffer.as_mut_ptr(), self.offset + index) }
     }
@@ -311,6 +313,11 @@ impl BitBufferMut {
             new_len <= self.capacity(),
             "`set_len` requires that new_len <= capacity()"
         );
+
+        // Calculate the new byte length required to hold the bits
+        let bytes_len = (self.offset + new_len).div_ceil(8);
+        unsafe { self.buffer.set_len(bytes_len) };
+
         self.len = new_len;
     }
 
@@ -485,35 +492,43 @@ impl BitBufferMut {
     ///
     /// Unlike bytes, if the split position is not on a byte-boundary this operation will copy
     /// data into the result type, and mutate self.
+    #[must_use = "consider BitBufferMut::truncate if you don't need the other half"]
     pub fn split_off(&mut self, at: usize) -> Self {
-        assert!(at <= self.len, "index {at} exceeds len {}", self.len);
+        assert!(
+            at <= self.capacity(),
+            "index {at} exceeds capacity {}",
+            self.capacity()
+        );
 
-        let new_offset = self.offset;
-        let new_len = self.len - at;
+        // The length of the tail is any bits after `at`
+        let tail_len = self.len.saturating_sub(at);
+        let byte_pos = (self.offset + at).div_ceil(8);
 
         // If we are splitting on a byte boundary, we can just slice the buffer
-        if (self.offset + at) % 8 == 0 {
-            let byte_pos = (self.offset + at) / 8;
-            let new_buffer = self.buffer.split_off(byte_pos);
-            self.len = at;
+        // Or if `at > self.len`, then the tail is empty anyway and we can just return as much
+        // of the existing capacity as possible.
+        if at > self.len() || ((self.offset + at) % 8 == 0) {
+            let tail_buffer = self.buffer.split_off(byte_pos);
+            self.len = self.len.min(at);
+
+            // Return the tail buffer
             return Self {
-                buffer: new_buffer,
-                offset: new_offset,
-                len: new_len,
+                buffer: tail_buffer,
+                offset: 0,
+                len: tail_len,
             };
         }
 
-        // Otherwise, we need to copy bits into a new buffer
-        let mut new_buffer = BitBufferMut::with_capacity(new_len);
-        for i in 0..new_len {
-            let value = self.value(at + i);
-            new_buffer.append(value);
-        }
+        // Otherwise, we truncate ourselves, and copy any bits into a new tail buffer.
+        // Note that in this case we do not preserve the capacity.
+        let u64_cap = tail_len.div_ceil(8);
+        let mut tail_buffer_u64 = BufferMut::<u64>::with_capacity(u64_cap);
+        tail_buffer_u64.extend(
+            BitChunks::new(self.buffer.as_slice(), self.offset + at, tail_len).iter_padded(),
+        );
 
-        // Truncate self to the split position
         self.truncate(at);
-
-        new_buffer
+        BitBufferMut::from_buffer(tail_buffer_u64.into_byte_buffer(), 0, tail_len)
     }
 
     /// Absorbs a mutable buffer that was previously split off.
@@ -568,6 +583,12 @@ impl BitBufferMut {
     /// Get the number of unset bits in the buffer.
     pub fn false_count(&self) -> usize {
         self.len - self.true_count()
+    }
+}
+
+impl Default for BitBufferMut {
+    fn default() -> Self {
+        Self::with_capacity(0)
     }
 }
 
@@ -636,7 +657,7 @@ impl FromIterator<bool> for BitBufferMut {
 #[cfg(test)]
 mod tests {
     use crate::bit::buf_mut::BitBufferMut;
-    use crate::{bitbuffer, bitbuffer_mut, buffer_mut, BufferMut};
+    use crate::{BufferMut, bitbuffer, bitbuffer_mut, buffer_mut};
 
     #[test]
     fn test_bits_mut() {
@@ -1098,6 +1119,42 @@ mod tests {
         assert_eq!(bit_buf.len(), 10);
         for i in 0..10 {
             assert_eq!(bit_buf.value(i), i % 2 == 0);
+        }
+    }
+
+    #[test]
+    fn test_split_off() {
+        // Test splitting at various positions and across a byte boundary
+        for i in 0..10 {
+            let buf = bitbuffer![0 1 0 1 0 1 0 1 0 1];
+
+            let mut buf_mut = buf.clone().into_mut();
+            assert_eq!(buf_mut.len(), 10);
+
+            let tail = buf_mut.split_off(i);
+            assert_eq!(buf_mut.len(), i);
+            assert_eq!(buf_mut.freeze(), buf.slice(0..i));
+
+            assert_eq!(tail.len(), 10 - i);
+            assert_eq!(tail.freeze(), buf.slice(i..10));
+        }
+    }
+
+    #[test]
+    fn test_split_off_with_offset() {
+        // Test splitting at various positions and across a byte boundary
+        for i in 0..10 {
+            let buf = bitbuffer![0 1 0 1 0 1 0 1 0 1 0 1].slice(2..);
+
+            let mut buf_mut = buf.clone().into_mut();
+            assert_eq!(buf_mut.len(), 10);
+
+            let tail = buf_mut.split_off(i);
+            assert_eq!(buf_mut.len(), i);
+            assert_eq!(buf_mut.freeze(), buf.slice(0..i));
+
+            assert_eq!(tail.len(), 10 - i);
+            assert_eq!(tail.freeze(), buf.slice(i..10));
         }
     }
 }

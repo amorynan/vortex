@@ -62,6 +62,11 @@ impl MaskMut {
         })
     }
 
+    /// Creates a new mask from an existing bit buffer.
+    pub fn from_buffer(bit_buffer: BitBufferMut) -> Self {
+        Self(Inner::Builder(bit_buffer))
+    }
+
     /// Returns the boolean value at a given index.
     ///
     /// # Panics
@@ -355,6 +360,14 @@ impl MaskMut {
                 }
             }
             Inner::Builder(bits) => bits.true_count(),
+        }
+    }
+
+    /// Returns the internal bit buffer if it exists.
+    pub fn as_bit_buffer_mut(&mut self) -> Option<&mut BitBufferMut> {
+        match &mut self.0 {
+            Inner::Builder(bits) => Some(bits),
+            _ => None,
         }
     }
 }

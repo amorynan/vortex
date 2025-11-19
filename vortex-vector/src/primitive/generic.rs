@@ -78,7 +78,23 @@ impl<T> PVector<T> {
         (self.elements, self.validity)
     }
 
-    /// Returns the internal [`Cow<Buffer<T>>`] of the [`PVector`].
+    /// Gets a nullable element at the given index, panicking on out-of-bounds.
+    ///
+    /// If the element at the given index is null, returns `None`. Otherwise, returns `Some(x)`,
+    /// where `x: T`.
+    ///
+    /// Note that this `get` method is different from the standard library [`slice::get`], which
+    /// returns `None` if the index is out of bounds. This method will panic if the index is out of
+    /// bounds, and return `None` if the elements is null.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the index is out of bounds.
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.validity.value(index).then(|| &self.elements[index])
+    }
+
+    /// Returns the internal [`Buffer`] of the [`PVector`].
     ///
     /// Note that the internal buffer may hold garbage data in place of nulls. That information is
     /// tracked by the [`validity()`](Self::validity).

@@ -4,7 +4,7 @@
 pub mod driver;
 
 use vortex_error::{VortexExpect, VortexResult};
-use vortex_vector::{Vector};
+use vortex_vector::Vector;
 
 /// A view over a fixed-size `N`-bit vector used in Vortex pipeline execution.
 pub type BitView<'a> = vortex_buffer::BitView<'a, N_BYTES>;
@@ -82,7 +82,12 @@ pub trait BindContext {
 /// The pipeline driver will verify these conditions before and after each step.
 pub trait Kernel: Send {
     /// Perform a single step of the kernel.
-    fn step(&mut self, ctx: &KernelCtx, selection: &BitView, out: &mut Vector) -> VortexResult<()>;
+    fn step(
+        &mut self,
+        ctx: &mut KernelCtx,
+        selection: &BitView,
+        out: VectorMut,
+    ) -> VortexResult<VectorMut>;
 }
 
 /// The context provided to kernels during execution to access input vectors.
@@ -99,17 +104,17 @@ impl KernelCtx {
 
     /// Returns the input vector at the given index.
     ///
-    /// Note that a [`Vector`] is returned here, indicating that this is the only instance of
-    /// the data. It does not imply that the caller is able to mutate the data (it is returned
-    /// as an immutable reference).
+    /// Note that a [`VectorMut`] is returned here, indicating that this is the only instance of
+    /// the data. Kernels are encouraged to use [`std::mem::swap`] or similar to propagate data
+    /// from input vectors to output vectors without unnecessary copies.
     ///
     /// # Panics
     ///
     /// If the input vector at the given index is not available (typically because the vector
     /// happens to be currently borrowed as an output vector!).
-    pub fn input(&mut self, id: VectorId) -> &Vector {
+    pub fn input(&mut self, id: VectorId) -> &mut VectorMut {
         self.vectors[id.0]
-            .as_ref()
+            .as_mut()
             .vortex_expect("Input vector at index is not available")
     }
 

@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, RangeBounds};
 
 use bytes::{Buf, Bytes};
-use vortex_error::{vortex_panic, VortexExpect};
+use vortex_error::{VortexExpect, vortex_panic};
 
 use crate::debug::TruncatedDebug;
 use crate::trusted_len::TrustedLen;
@@ -201,23 +201,10 @@ impl<T> Buffer<T> {
         buffer.freeze()
     }
 
-    /// Clears the buffer, removing all data.
+    /// Clear the buffer, preserving existing capacity.
     pub fn clear(&mut self) {
         self.bytes.clear();
         self.length = 0;
-    }
-
-    /// Shortens the buffer, keeping the first len bytes and dropping the rest.
-    ///
-    /// If len is greater than the buffer’s current length, this has no effect.
-    pub fn truncate(&mut self, len: usize) {
-        if len >= self.length {
-            return;
-        }
-
-        let byte_len = len * size_of::<T>();
-        self.bytes.truncate(byte_len);
-        self.length = len;
     }
 
     /// Returns the length of the buffer in elements of type T.
@@ -670,7 +657,7 @@ impl<T> From<BufferMut<T>> for Buffer<T> {
 mod test {
     use bytes::Buf;
 
-    use crate::{buffer, Alignment, Buffer, ByteBuffer};
+    use crate::{Alignment, Buffer, ByteBuffer, buffer};
 
     #[test]
     fn align() {
