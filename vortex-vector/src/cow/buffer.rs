@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use std::ops::RangeBounds;
+use std::ops::{Deref, RangeBounds};
 
 use vortex_buffer::{Buffer, BufferMut};
 
@@ -37,6 +37,7 @@ impl<T> Cow<Buffer<T>> {
         self.len() == 0
     }
 
+    /// Returns a slice of the buffer for the given range.
     pub fn slice(&self, range: impl RangeBounds<usize>) -> Self {
         match self {
             Cow::Frozen(frozen) => Cow::Frozen(frozen.slice(range)),
@@ -54,6 +55,28 @@ impl<T> Cow<Buffer<T>> {
             Cow::Frozen(frozen) => frozen.as_slice(),
             Cow::Mutable(mutable) => mutable.as_slice(),
         }
+    }
+
+    pub fn clear(&mut self) {
+        match self {
+            Cow::Frozen(frozen) => frozen.clear(),
+            Cow::Mutable(mutable) => mutable.clear(),
+        }
+    }
+
+    pub fn truncate(&mut self, len: usize) {
+        match self {
+            Cow::Frozen(frozen) => frozen.truncate(len),
+            Cow::Mutable(mutable) => mutable.truncate(len),
+        }
+    }
+}
+
+impl<T> Deref for Cow<Buffer<T>> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
     }
 }
 

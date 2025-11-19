@@ -3,17 +3,15 @@
 
 //! Definition and implementation of [`DecimalVectorMut`].
 
-use std::ops::RangeBounds;
-
 use vortex_dtype::{
-    DecimalDType, DecimalType, DecimalTypeDowncast, DecimalTypeUpcast, NativeDecimalType,
-    PrecisionScale, i256, match_each_decimal_value_type,
+    i256, match_each_decimal_value_type, DecimalDType, DecimalType, DecimalTypeDowncast,
+    DecimalTypeUpcast, NativeDecimalType, PrecisionScale,
 };
 use vortex_error::vortex_panic;
 use vortex_mask::Mask;
 
 use crate::decimal::DVectorMut;
-use crate::{Cow, VectorMutOps, match_each_dvector_mut};
+use crate::{match_each_dvector_mut, Cow, VectorMutOps};
 
 /// An enum over all supported decimal mutable vector types.
 #[derive(Clone, Debug)]
@@ -68,14 +66,6 @@ impl VectorMutOps for DecimalVectorMut {
         unsafe { match_each_dvector_mut!(self, |d| { d.validity_mut() }) }
     }
 
-    fn capacity(&self) -> usize {
-        match_each_dvector_mut!(self, |d| { d.capacity() })
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        match_each_dvector_mut!(self, |d| { d.reserve(additional) })
-    }
-
     fn clear(&mut self) {
         match_each_dvector_mut!(self, |d| { d.clear() })
     }
@@ -84,28 +74,16 @@ impl VectorMutOps for DecimalVectorMut {
         match_each_dvector_mut!(self, |d| { d.truncate(len) })
     }
 
-    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self {
-        match_each_dvector_mut!(self, |d| { d.slice(range).into() })
-    }
-
-    fn extend_from_vector(&mut self, other: &Self) {
-        match (self, other) {
-            (Self::D8(s), Self::D8(o)) => s.extend_from_vector(o),
-            (Self::D16(s), Self::D16(o)) => s.extend_from_vector(o),
-            (Self::D32(s), Self::D32(o)) => s.extend_from_vector(o),
-            (Self::D64(s), Self::D64(o)) => s.extend_from_vector(o),
-            (Self::D128(s), Self::D128(o)) => s.extend_from_vector(o),
-            (Self::D256(s), Self::D256(o)) => s.extend_from_vector(o),
-            _ => vortex_panic!("Mismatched decimal vector types in extend_from_vector"),
-        }
+    fn append_zeros(&mut self, n: usize) {
+        match_each_dvector_mut!(self, |d| { d.append_zeros(n) })
     }
 
     fn append_nulls(&mut self, n: usize) {
         match_each_dvector_mut!(self, |d| { d.append_nulls(n) })
     }
 
-    fn freeze(self) -> Self {
-        match_each_dvector_mut!(self, |d| { d.freeze().into() })
+    fn ensure_frozen(&mut self) {
+        match_each_dvector_mut!(self, |d| { d.ensure_frozen() })
     }
 
     fn split_off(&mut self, at: usize) -> Self {

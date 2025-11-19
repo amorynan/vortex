@@ -3,11 +3,9 @@
 
 //! Definition and implementation of [`PVectorMut<T>`].
 
-use std::ops::RangeBounds;
-
 use vortex_buffer::{Buffer, BufferMut};
 use vortex_dtype::NativePType;
-use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
+use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
 use vortex_mask::{Mask, MaskMut};
 
 // use crate::primitive::PVector;
@@ -114,60 +112,20 @@ impl<T: NativePType> VectorMutOps for PVectorMut<T> {
         &mut self.validity
     }
 
-    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self {
-        let elements = self.elements.slice(range.clone());
-        let validity = self.validity.slice(range);
-        Self::new(elements, validity)
-    }
-
-    fn capacity(&self) -> usize {
-        // self.elements.to_mut().capacity();
-        todo!("TODO(connor): It seems weird that we would need to call `into_mut` here");
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        self.elements.to_mut().reserve(additional);
-        self.validity.to_mut().reserve(additional);
-    }
-
     fn clear(&mut self) {
-        self.elements.to_mut().clear();
-        self.validity.to_mut().clear();
+        self.elements.ensure_mut().clear();
+        self.validity.ensure_mut().clear();
     }
 
     fn truncate(&mut self, len: usize) {
-        self.elements.to_mut().truncate(len);
-        self.validity.to_mut().truncate(len);
-    }
-
-    /// Extends the vector by appending elements from another vector.
-    fn extend_from_vector(&mut self, _other: &Self) {
-        // self.elements
-        //     .to_mut()
-        //     .extend_from_slice(other.elements.as_slice());
-        // self.validity
-        //     .to_mut()
-        //     .append_mask(other.validity().to_frozen()); // <- How do you do this???
-        todo!()
-    }
-
-    fn append_nulls(&mut self, n: usize) {
-        self.elements.to_mut().push_n(T::zero(), n); // Note that the value we push doesn't actually matter.
-        self.validity.to_mut().append_n(false, n);
-    }
-
-    /// Freeze the vector into an immutable one.
-    fn freeze(self) -> Self {
-        Self {
-            elements: Cow::Frozen(self.elements.freeze()),
-            validity: Cow::Frozen(self.validity.freeze()),
-        }
+        self.elements.ensure_mut().truncate(len);
+        self.validity.ensure_mut().truncate(len);
     }
 
     fn split_off(&mut self, at: usize) -> Self {
         Self {
-            elements: Cow::Mutable(self.elements.to_mut().split_off(at)),
-            validity: Cow::Mutable(self.validity.to_mut().split_off(at)),
+            elements: Cow::Mutable(self.elements.ensure_mut().split_off(at)),
+            validity: Cow::Mutable(self.validity.ensure_mut().split_off(at)),
         }
     }
 
@@ -177,7 +135,26 @@ impl<T: NativePType> VectorMutOps for PVectorMut<T> {
             return;
         }
 
-        self.elements.to_mut().unsplit(other.elements.into_mut());
-        self.validity.to_mut().unsplit(other.validity.into_mut());
+        self.elements
+            .ensure_mut()
+            .unsplit(other.elements.into_mut());
+        self.validity
+            .ensure_mut()
+            .unsplit(other.validity.into_mut());
+    }
+
+    fn ensure_frozen(&mut self) {
+        self.elements.ensure_frozen();
+        self.validity.ensure_frozen();
+    }
+
+    fn append_zeros(&mut self, n: usize) {
+        self.elements.ensure_mut().push_n(T::default(), n);
+        self.validity.ensure_mut().append_n(true, n);
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        self.elements.ensure_mut().push_n(T::default(), n);
+        self.validity.ensure_mut().append_n(false, n);
     }
 }

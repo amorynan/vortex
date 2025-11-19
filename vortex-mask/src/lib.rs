@@ -20,8 +20,8 @@ use std::sync::{Arc, OnceLock};
 
 use itertools::Itertools;
 pub use mask_mut::*;
-use vortex_buffer::{BitBuffer, BitBufferMut, set_bit_unchecked};
-use vortex_error::{VortexResult, vortex_panic};
+use vortex_buffer::{set_bit_unchecked, BitBuffer, BitBufferMut};
+use vortex_error::{vortex_panic, VortexResult};
 
 /// Represents a set of values that are all included, all excluded, or some mixture of both.
 pub enum AllOr<T> {
@@ -106,6 +106,12 @@ pub enum Mask {
     AllFalse(usize),
     /// Some values are included, represented as a [`BitBuffer`].
     Values(Arc<MaskValues>),
+}
+
+impl Default for Mask {
+    fn default() -> Self {
+        Self::AllFalse(0)
+    }
 }
 
 /// Represents the values of a [`Mask`] that contains some true and some false elements.
@@ -304,6 +310,32 @@ impl Mask {
             Self::AllTrue(len) => *len,
             Self::AllFalse(len) => *len,
             Self::Values(values) => values.len(),
+        }
+    }
+
+    /// Clear the mask. Note that this does not preserve any existing capacity.
+    #[inline]
+    pub fn clear(&mut self) {
+        *self = Self::AllFalse(0);
+    }
+
+    /// Shortens the mask, keeping the first `len` bits.
+    ///
+    /// If `len` is greater or equal to the vector’s current length, this has no effect.
+    ///
+    /// Note that this method has no effect on the allocated capacity of the mask.
+    pub fn truncate(&mut self, len: usize) {
+        let current_len = self.len();
+        if len >= current_len {
+            return;
+        }
+
+        match self {
+            Self::AllTrue(_) => *self = Self::AllTrue(len),
+            Self::AllFalse(_) => *self = Self::AllFalse(len),
+            Self::Values(values) => {
+                *self = Self::from_buffer(values.bit_buffer().slice(0..len));
+            }
         }
     }
 

@@ -5,8 +5,8 @@
 
 use vortex_dtype::NativePType;
 
-use crate::VectorMutOps;
 use crate::primitive::PVectorMut;
+use crate::VectorMutOps;
 
 impl<T: NativePType> Extend<Option<T>> for PVectorMut<T> {
     /// Extends the vector from an iterator of optional values.
@@ -34,18 +34,18 @@ impl<T: NativePType> Extend<Option<T>> for PVectorMut<T> {
 
         // We choose not to use the optional upper bound size hint to match the standard library.
 
-        self.reserve(lower_bound);
+        // self.reserve(lower_bound);
 
         // We have to update validity per-element since it depends on Option variant.
         for opt_val in iter {
             match opt_val {
                 Some(val) => {
-                    self.elements.to_mut().push(val);
-                    self.validity.to_mut().append_n(true, 1);
+                    self.elements.ensure_mut().push(val);
+                    self.validity.ensure_mut().append_n(true, 1);
                 }
                 None => {
-                    self.elements.to_mut().push(T::default());
-                    self.validity.to_mut().append_n(false, 1);
+                    self.elements.ensure_mut().push(T::default());
+                    self.validity.ensure_mut().append_n(false, 1);
                 }
             }
         }
@@ -81,9 +81,9 @@ impl<T: NativePType> Extend<T> for PVectorMut<T> {
         let start_len = self.elements.len();
 
         // Allow the `BufferMut` implementation to handle extending efficiently.
-        self.elements.to_mut().extend(iter);
+        self.elements.ensure_mut().extend(iter);
         self.validity
-            .to_mut()
+            .ensure_mut()
             .append_n(true, self.elements.len() - start_len);
     }
 }
@@ -137,7 +137,7 @@ impl<T: NativePType> Iterator for PVectorMutIterator<T> {
             let value = self
                 .vector
                 .validity
-                .to_mut()
+                .ensure_mut()
                 .value(self.index)
                 .then(|| self.vector.elements.as_ref()[self.index]);
             self.index += 1;

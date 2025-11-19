@@ -161,6 +161,12 @@ where
 {
 }
 
+// Repeat
+unsafe impl<T: Clone> TrustedLen for std::iter::Repeat<T> {}
+
+// Take
+unsafe impl<I> TrustedLen for std::iter::Take<I> where I: TrustedLen {}
+
 // Arrow bit iterators
 unsafe impl<'a> TrustedLen for crate::bit::BitChunkIterator<'a> {}
 unsafe impl<'a> TrustedLen for crate::bit::UnalignedBitChunkIterator<'a> {}

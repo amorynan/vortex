@@ -3,16 +3,13 @@
 
 //! Mutable variable-length binary vector.
 
-// use std::sync::Arc;
+use vortex_buffer::{Alignment, Buffer, BufferMut, ByteBuffer, ByteBufferMut};
+use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
+use vortex_mask::{Mask, MaskMut};
 
-use vortex_buffer::{BufferMut, ByteBuffer, ByteBufferMut};
-use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
-use vortex_mask::MaskMut;
-
-// use crate::binaryview::vector::BinaryViewVector;
-use crate::VectorMutOps;
+use crate::binaryview::view::{validate_views, BinaryView};
 use crate::binaryview::BinaryViewType;
-use crate::binaryview::view::{BinaryView, validate_views};
+use crate::{Cow, VectorMutOps};
 
 // Default capacity for new string data buffers of 2MiB.
 const BUFFER_CAPACITY: usize = 2 * 1024 * 1024;
@@ -23,9 +20,9 @@ const BUFFER_CAPACITY: usize = 2 * 1024 * 1024;
 #[derive(Clone, Debug)]
 pub struct BinaryViewVectorMut<T: BinaryViewType> {
     /// Views into the binary data.
-    views: BufferMut<BinaryView>,
+    views: Cow<Buffer<BinaryView>>,
     /// Validity mask for the vector.
-    validity: MaskMut,
+    validity: Cow<Mask>,
 
     /// The completed buffers holding referenced binary data.
     buffers: Vec<ByteBuffer>,
@@ -43,7 +40,11 @@ impl<T: BinaryViewType> BinaryViewVectorMut<T> {
     ///
     /// This function will panic if any of the validation checks performed by [`try_new`][Self::try_new]
     /// fails.
-    pub fn new(views: BufferMut<BinaryView>, buffers: Vec<ByteBuffer>, validity: MaskMut) -> Self {
+    pub fn new(
+        views: Cow<Buffer<BinaryView>>,
+        buffers: Vec<ByteBuffer>,
+        validity: Cow<Mask>,
+    ) -> Self {
         Self::try_new(views, buffers, validity)
             .vortex_expect("Failed to create `BinaryViewVectorMut`")
     }
@@ -53,9 +54,9 @@ impl<T: BinaryViewType> BinaryViewVectorMut<T> {
     /// and the validity bits.
     pub fn with_capacity(capacity: usize) -> Self {
         Self::new(
-            BufferMut::with_capacity(capacity),
+            Cow::Mutable(BufferMut::with_capacity(capacity)),
             Vec::new(),
-            MaskMut::with_capacity(capacity),
+            Cow::Mutable(MaskMut::with_capacity(capacity)),
         )
     }
 
@@ -67,9 +68,9 @@ impl<T: BinaryViewType> BinaryViewVectorMut<T> {
     ///
     /// Returns an error if the views reference any data that is not a valid buffer
     pub fn try_new(
-        views: BufferMut<BinaryView>,
+        views: Cow<Buffer<BinaryView>>,
         buffers: Vec<ByteBuffer>,
-        validity: MaskMut,
+        validity: Cow<Mask>,
     ) -> VortexResult<Self> {
         vortex_ensure!(
             views.len() == validity.len(),
@@ -78,7 +79,12 @@ impl<T: BinaryViewType> BinaryViewVectorMut<T> {
             validity.len()
         );
 
-        validate_views(&views, &buffers, |index| validity.value(index), T::validate)?;
+        validate_views(
+            views.as_ref(),
+            buffers.as_ref(),
+            |index| validity.value(index),
+            T::validate,
+        )?;
 
         Ok(Self {
             views,
@@ -95,8 +101,8 @@ impl<T: BinaryViewType> BinaryViewVectorMut<T> {
     ///
     /// The caller must ensure that the validity mask has the same length as the views.
     pub unsafe fn new_unchecked(
-        views: BufferMut<BinaryView>,
-        validity: MaskMut,
+        views: Cow<Buffer<BinaryView>>,
+        validity: Cow<Mask>,
         buffers: Vec<ByteBuffer>,
     ) -> Self {
         if cfg!(debug_assertions) {
@@ -112,29 +118,109 @@ impl<T: BinaryViewType> BinaryViewVectorMut<T> {
         }
     }
 
+    /// Get a handle to the buffer holding the [views][BinaryView] of the vector.
+    pub fn views(&self) -> &Cow<Buffer<BinaryView>> {
+        &self.views
+    }
+
     /// Get a mutable handle to the buffer holding the [views][BinaryView] of the vector.
     ///
     /// # Safety
     ///
     /// Caller must make sure that length of the views always matches
     /// length of the validity mask.
-    pub unsafe fn views_mut(&mut self) -> &mut BufferMut<BinaryView> {
+    pub unsafe fn views_mut(&mut self) -> &mut Cow<Buffer<BinaryView>> {
         &mut self.views
     }
 
-    /// Get a mutable handle to the validity mask of the vector.
-    ///
-    /// # Safety
-    ///
-    /// Caller must make sure that the length of the validity mask
-    /// always matches the length of the views
-    pub unsafe fn validity_mut(&mut self) -> &mut MaskMut {
-        &mut self.validity
+    /// Get a handle to the vector of buffers backing the string data of the vector.
+    pub fn buffers(&self) -> &[ByteBuffer] {
+        &self.buffers
     }
 
     /// Get a mutable handle to the vector of buffers backing the string data of the vector.
-    pub fn buffers(&mut self) -> &mut Vec<ByteBuffer> {
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure that no existing views into the buffers are invalidated.
+    pub unsafe fn buffers_mut(&mut self) -> &mut Vec<ByteBuffer> {
         &mut self.buffers
+    }
+
+    /// Get the `index` item from the vector as an owned `Scalar` type with zero-copy.
+    ///
+    /// This function will panic is `index` is out of range for the vector's length.
+    pub fn get(&self, index: usize) -> Option<T::Scalar> {
+        if !self.validity.value(index) {
+            return None;
+        }
+
+        let view = &self.views[index];
+        if view.is_inlined() {
+            let view = view.as_inlined();
+
+            // For frozen views, we can return a slice zero-copy.
+            // For mutable views, we need to copy the data into a new buffer.
+            let buffer = match &self.views {
+                Cow::Frozen(frozen) => frozen
+                    .clone()
+                    .into_byte_buffer()
+                    .slice_ref_with_alignment(&view.data[..view.size as usize], Alignment::none()),
+                Cow::Mutable(_) => {
+                    let mut buffer = ByteBufferMut::with_capacity(view.size as usize);
+                    buffer.extend_from_slice(&view.data[..view.size as usize]);
+                    buffer.freeze()
+                }
+            };
+
+            // SAFETY: validation that the string data contained in this vector is performed
+            //  at construction time, either in the constructor for safe construction, or by
+            //  the caller (when using the unchecked constructor).
+            Some(unsafe { T::scalar_from_buffer_unchecked(buffer) })
+        } else {
+            // Get a pointer into the buffer range
+            let view_ref = view.as_view();
+            let buffer = &self.buffers[view_ref.buffer_index as usize];
+
+            let start = view_ref.offset as usize;
+            let length = view_ref.size as usize;
+            let buffer_slice = buffer.slice(start..start + length);
+
+            // SAFETY: validation that the string data contained in this vector is performed
+            //  at construction time, either in the constructor for safe construction, or by
+            //  the caller (when using the unchecked constructor).
+            Some(unsafe { T::scalar_from_buffer_unchecked(buffer_slice) })
+        }
+    }
+
+    /// Get the `index` item from the vector as a native `Slice` type.
+    ///
+    /// This function will panic is `index` is out of range for the vector's length.
+    pub fn get_ref(&self, index: usize) -> Option<&T::Slice> {
+        if !self.validity.value(index) {
+            return None;
+        }
+
+        let view = &self.views[index];
+        if view.is_inlined() {
+            let view = view.as_inlined();
+            // SAFETY: validation that the string data contained in this vector is performed
+            //  at construction time, either in the constructor for safe construction, or by
+            //  the caller (when using the unchecked constructor).
+            Some(unsafe { T::from_bytes_unchecked(&view.data[..view.size as usize]) })
+        } else {
+            // Get a pointer into the buffer range
+            let view_ref = view.as_view();
+            let buffer = &self.buffers[view_ref.buffer_index as usize];
+
+            let start = view_ref.offset as usize;
+            let length = view_ref.size as usize;
+
+            // SAFETY: validation that the string data contained in this vector is performed
+            //  at construction time, either in the constructor for safe construction, or by
+            //  the caller (when using the unchecked constructor).
+            Some(unsafe { T::from_bytes_unchecked(&buffer.as_bytes()[start..start + length]) })
+        }
     }
 
     /// Append a repeated sequence of binary data to a vector.
@@ -155,9 +241,11 @@ impl<T: BinaryViewType> BinaryViewVectorMut<T> {
     /// );
     /// ```
     pub fn append_values(&mut self, value: &T::Slice, n: usize) {
+        let views = self.views.ensure_mut();
+
         let bytes = value.as_ref();
         if bytes.len() <= BinaryView::MAX_INLINED_SIZE {
-            self.views.push_n(BinaryView::new_inlined(bytes), n);
+            views.push_n(BinaryView::new_inlined(bytes), n);
         } else {
             let buffer_index =
                 u32::try_from(self.buffers.len()).vortex_expect("buffer count exceeds u32::MAX");
@@ -168,11 +256,10 @@ impl<T: BinaryViewType> BinaryViewVectorMut<T> {
             let offset = u32::try_from(buf.len()).vortex_expect("buffer length exceeds u32::MAX");
             buf.extend_from_slice(value.as_ref());
 
-            self.views
-                .push_n(BinaryView::make_view(bytes, buffer_index, offset), n);
+            views.push_n(BinaryView::make_view(bytes, buffer_index, offset), n);
         }
 
-        self.validity.append_n(true, n);
+        self.validity.ensure_mut().append_n(true, n);
     }
 
     /// Append a repeated sequence of binary data to a vector, from an owned buffer.
@@ -183,19 +270,20 @@ impl<T: BinaryViewType> BinaryViewVectorMut<T> {
 
         if buffer.len() <= BinaryView::MAX_INLINED_SIZE {
             self.views
+                .ensure_mut()
                 .push_n(BinaryView::new_inlined(buffer.as_ref()), n);
         } else {
             self.flush_open_buffer();
-
             let buffer_index = u32::try_from(self.buffers.len())
                 .vortex_expect("buffer count exceeds u32::MAX")
                 + 1;
             self.views
+                .ensure_mut()
                 .push_n(BinaryView::make_view(buffer.as_ref(), buffer_index, 0), n);
             self.buffers.push(buffer);
         }
 
-        self.validity.append_n(true, n);
+        self.validity.ensure_mut().append_n(true, n);
     }
 
     fn flush_open_buffer(&mut self) {
@@ -210,17 +298,12 @@ impl<T: BinaryViewType> VectorMutOps for BinaryViewVectorMut<T> {
         self.views.len()
     }
 
-    fn validity(&self) -> &MaskMut {
+    fn validity(&self) -> &Cow<Mask> {
         &self.validity
     }
 
-    fn capacity(&self) -> usize {
-        self.views.capacity()
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        self.views.reserve(additional);
-        self.validity.reserve(additional);
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        &mut self.validity
     }
 
     fn clear(&mut self) {
@@ -235,45 +318,20 @@ impl<T: BinaryViewType> VectorMutOps for BinaryViewVectorMut<T> {
         self.validity.truncate(len);
     }
 
-    // fn extend_from_vector(&mut self, other: &BinaryViewVector<T>) {
-    //     // Close any existing views into a new buffer
-    //     self.flush_open_buffer();
-
-    //     let offset =
-    //         u32::try_from(self.buffers.len()).vortex_expect("buffer count exceeds u32::MAX");
-
-    //     self.buffers.extend(other.buffers().iter().cloned());
-
-    //     let new_views_iter = other.views().iter().copied().map(|mut v| {
-    //         if v.is_inlined() {
-    //             v
-    //         } else {
-    //             v.as_view_mut().buffer_index += offset;
-    //             v
-    //         }
-    //     });
-    //     self.views.extend(new_views_iter);
-
-    //     self.validity.append_mask(other.validity())
-    // }
-
-    fn append_nulls(&mut self, n: usize) {
-        self.views.push_n(BinaryView::empty_view(), n);
-        self.validity.append_n(false, n);
+    fn append_zeros(&mut self, n: usize) {
+        self.views.ensure_mut().push_n(BinaryView::empty_view(), n);
+        self.validity.ensure_mut().append_n(true, n);
     }
 
-    // fn freeze(mut self) -> BinaryViewVector<T> {
-    //     // Freeze all components, close any in-progress views
-    //     self.flush_open_buffer();
+    fn append_nulls(&mut self, n: usize) {
+        self.views.ensure_mut().push_n(BinaryView::empty_view(), n);
+        self.validity.ensure_mut().append_n(false, n);
+    }
 
-    //     unsafe {
-    //         BinaryViewVector::new_unchecked(
-    //             self.views.freeze(),
-    //             Arc::new(self.buffers.into_boxed_slice()),
-    //             self.validity.freeze(),
-    //         )
-    //     }
-    // }
+    fn ensure_frozen(&mut self) {
+        self.views.ensure_frozen();
+        self.validity.ensure_frozen();
+    }
 
     fn split_off(&mut self, _at: usize) -> Self {
         todo!()
@@ -289,37 +347,89 @@ impl<T: BinaryViewType> VectorMutOps for BinaryViewVectorMut<T> {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
-    use std::sync::Arc;
+    use crate::binaryview::{BinaryView, StringVectorMut};
+    use vortex_buffer::{buffer, ByteBuffer};
+    use vortex_mask::Mask;
 
-    use vortex_buffer::{ByteBuffer, buffer, buffer_mut};
-    use vortex_mask::{Mask, MaskMut};
+    #[test]
+    #[should_panic(expected = "views buffer length 1 != validity length 100")]
+    fn test_try_new_mismatch_validity_len() {
+        StringVectorMut::try_new(
+            buffer![BinaryView::new_inlined(b"inlined")].into(),
+            vec![],
+            Mask::new_true(100).into(),
+        )
+        .unwrap();
+    }
 
-    use crate::binaryview::view::BinaryView;
-    use crate::binaryview::{StringVector, StringVectorMut};
-    use crate::{VectorMutOps, VectorOps};
+    #[test]
+    #[should_panic(
+        expected = "view at index 0 references invalid buffer: 100 out of bounds for BinaryViewVector with 0 buffers"
+    )]
+    fn test_try_new_invalid_buffer_offset() {
+        StringVectorMut::try_new(
+            buffer![BinaryView::make_view(b"bad buffer ptr", 100, 0)].into(),
+            vec![],
+            Mask::new_true(1).into(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "start offset 4294967295 out of bounds for buffer 0 with size 19")]
+    fn test_try_new_invalid_length() {
+        StringVectorMut::try_new(
+            buffer![BinaryView::make_view(b"bad buffer ptr", 0, u32::MAX)].into(),
+            vec![ByteBuffer::copy_from(b"a very short buffer")],
+            Mask::new_true(1).into(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "view at index 0: inlined bytes failed utf-8 validation")]
+    fn test_try_new_invalid_utf8_inlined() {
+        StringVectorMut::try_new(
+            buffer![BinaryView::new_inlined(b"\x80")].into(),
+            vec![],
+            Mask::new_true(1).into(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "view at index 0: outlined bytes failed utf-8 validation")]
+    fn test_try_new_invalid_utf8_outlined() {
+        // 0xFF is never valid in UTF-8
+        let sequence = b"\xff".repeat(13);
+        StringVectorMut::try_new(
+            buffer![BinaryView::make_view(&sequence, 0, 0)].into(),
+            vec![ByteBuffer::copy_from(sequence)],
+            Mask::new_true(1).into(),
+        )
+        .unwrap();
+    }
 
     #[test]
     fn test_basic() {
-        let strings_mut = StringVectorMut::new(
-            buffer_mut![
+        let strings = StringVectorMut::new(
+            buffer![
                 BinaryView::new_inlined(b"inlined1"),
                 BinaryView::make_view(b"long string 1", 0, 0),
                 BinaryView::new_inlined(b"inlined2"),
                 BinaryView::make_view(b"long string 2", 0, 13),
                 BinaryView::new_inlined(b"inlined3"),
                 BinaryView::make_view(b"long string 3", 0, 26),
-            ],
+            ]
+            .into(),
             vec![ByteBuffer::copy_from(
                 "long string 1long string 2long string 3",
             )],
-            MaskMut::new_true(6),
+            Mask::new_true(6).into(),
         );
 
-        let strings = strings_mut.freeze();
         assert_eq!(strings.get_ref(0), Some("inlined1"));
         assert_eq!(strings.get_ref(1), Some("long string 1"));
         assert_eq!(strings.get_ref(2), Some("inlined2"));
@@ -327,112 +437,4 @@ mod tests {
         assert_eq!(strings.get_ref(4), Some("inlined3"));
         assert_eq!(strings.get_ref(5), Some("long string 3"));
     }
-
-    #[test]
-    fn test_extend_self_reference() {
-        let buf0 = ByteBuffer::copy_from(
-            b"a really very quite long string 1a really very quite long string 2",
-        );
-        let buf1 = ByteBuffer::copy_from(
-            b"a really very quite long string 3a really very quite long string 4",
-        );
-
-        let mut strings_mut = StringVectorMut::new(
-            buffer_mut![
-                BinaryView::new_inlined(b"inlined0"),
-                BinaryView::new_inlined(b"inlined1"),
-                BinaryView::make_view(b"a really very quite long string 4", 1, 33),
-                BinaryView::make_view(b"a really very quite long string 3", 1, 0),
-                BinaryView::make_view(b"a really very quite long string 2", 0, 33),
-                BinaryView::make_view(b"a really very quite long string 1", 0, 0),
-            ],
-            vec![buf0.clone(), buf1.clone()],
-            MaskMut::new_true(6),
-        );
-
-        // The `StringVector` we extend from
-        let strings = StringVector::new(
-            buffer![BinaryView::make_view(
-                b"a really very quite long string 2",
-                0,
-                33
-            )],
-            Arc::new(Box::new([buf1.clone()])),
-            Mask::new_true(1),
-        );
-
-        strings_mut.extend_from_vector(&strings);
-
-        let strings_finished = strings_mut.freeze();
-        assert!(strings_finished.validity().all_true());
-
-        assert_eq!(strings_finished.get_ref(0).unwrap(), "inlined0");
-        assert_eq!(strings_finished.get_ref(1).unwrap(), "inlined1");
-        assert_eq!(
-            strings_finished.get_ref(2).unwrap(),
-            "a really very quite long string 4"
-        );
-        assert_eq!(
-            strings_finished.get_ref(3).unwrap(),
-            "a really very quite long string 3"
-        );
-        assert_eq!(
-            strings_finished.get_ref(4).unwrap(),
-            "a really very quite long string 2",
-        );
-        assert_eq!(
-            strings_finished.get_ref(5).unwrap(),
-            "a really very quite long string 1"
-        );
-        assert_eq!(
-            strings_finished.get_ref(6).unwrap(),
-            "a really very quite long string 4"
-        );
-
-        assert_eq!(
-            strings_finished.buffers().deref().as_ref(),
-            &[buf0, buf1.clone(), buf1]
-        );
-    }
-
-    #[test]
-    fn test_extend_nulls() {
-        // Extend multiple times, with nulls.
-        let mut mask1 = MaskMut::with_capacity(4);
-        mask1.append_n(false, 2);
-        mask1.append_n(true, 2);
-
-        let mut strings_mut = StringVectorMut::new(
-            buffer_mut![
-                BinaryView::empty_view(),
-                BinaryView::empty_view(),
-                BinaryView::new_inlined(b"nonnull1"),
-                BinaryView::new_inlined(b"nonnull2"),
-            ],
-            vec![ByteBuffer::empty()],
-            mask1,
-        );
-
-        let strings = StringVector::new(
-            buffer![
-                BinaryView::new_inlined(b"extend1"),
-                BinaryView::empty_view(),
-                BinaryView::new_inlined(b"extend2"),
-            ],
-            Arc::new(Box::new([ByteBuffer::empty()])),
-            Mask::from_iter([true, false, true]),
-        );
-
-        strings_mut.extend_from_vector(&strings);
-        let strings_finished = strings_mut.freeze();
-
-        assert_eq!(strings_finished.get_ref(0), None);
-        assert_eq!(strings_finished.get_ref(1), None);
-        assert_eq!(strings_finished.get_ref(2), Some("nonnull1"));
-        assert_eq!(strings_finished.get_ref(3), Some("nonnull2"));
-        assert_eq!(strings_finished.get_ref(4), Some("extend1"));
-        assert_eq!(strings_finished.get_ref(5), None);
-        assert_eq!(strings_finished.get_ref(6), Some("extend2"));
-    }
 }
-*/

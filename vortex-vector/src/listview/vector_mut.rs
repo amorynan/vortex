@@ -6,13 +6,13 @@
 // use std::sync::Arc;
 
 use vortex_dtype::{DType, PType};
-use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
-use vortex_mask::MaskMut;
+use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
+use vortex_mask::{Mask, MaskMut};
 
 // use super::ListViewVector;
 use crate::primitive::PrimitiveVectorMut;
 use crate::vector_ops::VectorMutOps;
-use crate::{VectorMut, match_each_integer_pvector_mut};
+use crate::{match_each_integer_pvector_mut, Cow, VectorMut};
 
 /// A mutable vector of variable-width lists.
 ///
@@ -30,7 +30,7 @@ use crate::{VectorMut, match_each_integer_pvector_mut};
 ///   `elements` vector.
 /// - `sizes`: A [`PrimitiveVectorMut`] containing the size (number of elements) of each list.
 /// - `validity`: A [`MaskMut`] indicating which lists are null.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ListViewVectorMut {
     /// The mutable child vector of elements.
     pub(super) elements: Box<VectorMut>,
@@ -49,7 +49,7 @@ pub struct ListViewVectorMut {
     ///
     /// Note that the `elements` vector will have its own internal validity, denoting if individual
     /// list elements are null.
-    pub(super) validity: MaskMut,
+    pub(super) validity: Cow<Mask>,
 
     /// The length of the vector (which is the same as the length of the validity mask).
     ///
@@ -75,7 +75,7 @@ impl ListViewVectorMut {
         elements: Box<VectorMut>,
         offsets: PrimitiveVectorMut,
         sizes: PrimitiveVectorMut,
-        validity: MaskMut,
+        validity: Cow<Mask>,
     ) -> Self {
         Self::try_new(elements, offsets, sizes, validity)
             .vortex_expect("Failed to create `ListViewVectorMut`")
@@ -98,7 +98,7 @@ impl ListViewVectorMut {
         elements: Box<VectorMut>,
         offsets: PrimitiveVectorMut,
         sizes: PrimitiveVectorMut,
-        validity: MaskMut,
+        validity: Cow<Mask>,
     ) -> VortexResult<Self> {
         let len = validity.len();
 
@@ -113,14 +113,14 @@ impl ListViewVectorMut {
             sizes.len(),
         );
 
-        vortex_ensure!(
-            offsets.validity().all_true(),
-            "Offsets vector must not contain null values"
-        );
-        vortex_ensure!(
-            sizes.validity().all_true(),
-            "Sizes vector must not contain null values"
-        );
+        // vortex_ensure!(
+        //     offsets.validity().all_true(),
+        //     "Offsets vector must not contain null values"
+        // );
+        // vortex_ensure!(
+        //     sizes.validity().all_true(),
+        //     "Sizes vector must not contain null values"
+        // );
 
         let offsets_width = offsets.ptype().byte_width();
         let sizes_width = sizes.ptype().byte_width();
@@ -157,7 +157,7 @@ impl ListViewVectorMut {
         elements: Box<VectorMut>,
         offsets: PrimitiveVectorMut,
         sizes: PrimitiveVectorMut,
-        validity: MaskMut,
+        validity: Cow<Mask>,
     ) -> Self {
         let len = validity.len();
 
@@ -181,7 +181,7 @@ impl ListViewVectorMut {
                 Box::new(VectorMut::with_capacity(element_dtype, 0)),
                 PrimitiveVectorMut::with_capacity(PType::U64, capacity),
                 PrimitiveVectorMut::with_capacity(PType::U32, capacity),
-                MaskMut::with_capacity(capacity),
+                Cow::Mutable(MaskMut::with_capacity(capacity)),
             )
         }
     }
@@ -194,7 +194,7 @@ impl ListViewVectorMut {
         Box<VectorMut>,
         PrimitiveVectorMut,
         PrimitiveVectorMut,
-        MaskMut,
+        Cow<Mask>,
     ) {
         (self.elements, self.offsets, self.sizes, self.validity)
     }
@@ -244,7 +244,7 @@ impl ListViewVectorMut {
     ///
     /// Callers must ensure modifying the length of the validity mask is only done
     /// with corresponding updates to length of the offsets and sizes.
-    pub unsafe fn validity_mut(&mut self) -> &mut MaskMut {
+    pub unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
         &mut self.validity
     }
 }
@@ -254,38 +254,22 @@ impl VectorMutOps for ListViewVectorMut {
         self.len
     }
 
-    fn validity(&self) -> &MaskMut {
+    fn validity(&self) -> &Cow<Mask> {
         &self.validity
-    }
-
-    fn capacity(&self) -> usize {
-        debug_assert!(
-            self.offsets.capacity() <= self.sizes.capacity(),
-            "the capacity of the sizes was somehow less than the offsets"
-        );
-
-        self.offsets.capacity()
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        self.offsets.reserve(additional);
-        self.sizes.reserve(additional);
-        self.elements.reserve(additional * 2); // Sane default TODO
-        self.validity.reserve(additional);
     }
 
     fn clear(&mut self) {
         self.offsets.clear();
         self.sizes.clear();
         self.elements.clear();
-        self.validity.clear();
+        // self.validity.clear();
         self.len = 0;
     }
 
     fn truncate(&mut self, len: usize) {
         self.offsets.truncate(len);
         self.sizes.truncate(len);
-        self.validity.truncate(len);
+        // self.validity.truncate(len);
         self.len = self.validity.len();
     }
 
@@ -314,48 +298,48 @@ impl VectorMutOps for ListViewVectorMut {
     //     self.len += other.len;
     //     debug_assert_eq!(self.len, self.validity.len());
     // }
-
-    fn append_nulls(&mut self, n: usize) {
-        // To support easier copying to Arrow `List`s, we point the null views towards the ends of
-        // the `elements` vector (with size 0) to hopefully keep offsets sorted if they were already
-        // sorted.
-        let elements_len = self.elements.len();
-
-        debug_assert!(
-            (elements_len as u64) < self.offsets.ptype().max_value_as_u64(),
-            "the elements length {elements_len} is somehow not representable by the offsets type {}",
-            self.offsets.ptype()
-        );
-
-        self.offsets.reserve(n);
-        self.sizes.reserve(n);
-
-        match_each_integer_pvector_mut!(&mut self.offsets, |offsets_vec| {
-            for _ in 0..n {
-                // SAFETY: We just reserved capacity for `n` elements above, and the cast must
-                // succeed because the elements length must be representable by the offset type.
-                #[allow(clippy::cast_possible_truncation)]
-                unsafe {
-                    offsets_vec.push_unchecked(elements_len as _)
-                };
-            }
-        });
-
-        match_each_integer_pvector_mut!(&mut self.sizes, |sizes_vec| {
-            for _ in 0..n {
-                // SAFETY: We just reserved capacity for `n` elements above, and `0` is
-                // representable by all integer types.
-                #[allow(clippy::cast_possible_truncation)]
-                unsafe {
-                    sizes_vec.push_unchecked(0 as _)
-                };
-            }
-        });
-
-        self.validity.append_n(false, n);
-        self.len += n;
-        debug_assert_eq!(self.len, self.validity.len());
-    }
+    //
+    // fn append_nulls(&mut self, n: usize) {
+    //     // To support easier copying to Arrow `List`s, we point the null views towards the ends of
+    //     // the `elements` vector (with size 0) to hopefully keep offsets sorted if they were already
+    //     // sorted.
+    //     let elements_len = self.elements.len();
+    //
+    //     debug_assert!(
+    //         (elements_len as u64) < self.offsets.ptype().max_value_as_u64(),
+    //         "the elements length {elements_len} is somehow not representable by the offsets type {}",
+    //         self.offsets.ptype()
+    //     );
+    //
+    //     self.offsets.reserve(n);
+    //     self.sizes.reserve(n);
+    //
+    //     match_each_integer_pvector_mut!(&mut self.offsets, |offsets_vec| {
+    //         for _ in 0..n {
+    //             // SAFETY: We just reserved capacity for `n` elements above, and the cast must
+    //             // succeed because the elements length must be representable by the offset type.
+    //             #[allow(clippy::cast_possible_truncation)]
+    //             unsafe {
+    //                 offsets_vec.push_unchecked(elements_len as _)
+    //             };
+    //         }
+    //     });
+    //
+    //     match_each_integer_pvector_mut!(&mut self.sizes, |sizes_vec| {
+    //         for _ in 0..n {
+    //             // SAFETY: We just reserved capacity for `n` elements above, and `0` is
+    //             // representable by all integer types.
+    //             #[allow(clippy::cast_possible_truncation)]
+    //             unsafe {
+    //                 sizes_vec.push_unchecked(0 as _)
+    //             };
+    //         }
+    //     });
+    //
+    //     self.validity.append_n(false, n);
+    //     self.len += n;
+    //     debug_assert_eq!(self.len, self.validity.len());
+    // }
 
     // fn freeze(self) -> ListViewVector {
     //     ListViewVector {
@@ -376,6 +360,22 @@ impl VectorMutOps for ListViewVectorMut {
             *self = other;
             return;
         }
+        todo!()
+    }
+
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        &mut self.validity
+    }
+
+    fn ensure_frozen(&mut self) {
+        todo!()
+    }
+
+    fn append_zeros(&mut self, n: usize) {
+        todo!()
+    }
+
+    fn append_nulls(&mut self, n: usize) {
         todo!()
     }
 }

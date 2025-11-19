@@ -5,13 +5,13 @@ use std::ops::{BitAnd, BitOr, BitXor, Not, RangeBounds};
 
 use crate::bit::ops::{bitwise_binary_op, bitwise_unary_op};
 use crate::bit::{
-    BitChunks, BitIndexIterator, BitIterator, BitSliceIterator, UnalignedBitChunk,
-    get_bit_unchecked,
+    get_bit_unchecked, BitChunks, BitIndexIterator, BitIterator, BitSliceIterator,
+    UnalignedBitChunk,
 };
-use crate::{Alignment, BitBufferMut, Buffer, BufferMut, ByteBuffer, buffer};
+use crate::{buffer, Alignment, BitBufferMut, Buffer, BufferMut, ByteBuffer};
 
 /// An immutable bitset stored as a packed byte buffer.
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Default, Clone, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BitBuffer {
     buffer: ByteBuffer,
@@ -172,6 +172,13 @@ impl BitBuffer {
     #[inline(always)]
     pub fn inner(&self) -> &ByteBuffer {
         &self.buffer
+    }
+
+    /// Clears the buffer, removing all data.
+    pub fn clear(&mut self) {
+        self.buffer.clear();
+        self.len = 0;
+        self.offset = 0;
     }
 
     /// Retrieve the value at the given index.
@@ -483,7 +490,7 @@ mod tests {
     use rstest::rstest;
 
     use crate::bit::BitBuffer;
-    use crate::{ByteBuffer, buffer};
+    use crate::{buffer, ByteBuffer};
 
     #[test]
     fn test_bool() {

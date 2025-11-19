@@ -61,6 +61,7 @@ impl Cow<BitBuffer> {
         }
     }
 
+    /// Returns a slice over the bit buffer.
     pub fn slice(&self, range: impl RangeBounds<usize>) -> Self {
         match self {
             Cow::Frozen(frozen) => Cow::Frozen(frozen.slice(range)),

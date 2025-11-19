@@ -27,6 +27,12 @@ enum Inner {
     Builder(BitBufferMut),
 }
 
+impl Default for MaskMut {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
 impl MaskMut {
     /// Creates a new empty mask.
     pub fn empty() -> Self {

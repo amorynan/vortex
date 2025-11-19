@@ -7,7 +7,7 @@ use arrow_buffer::bit_chunk_iterator::{BitChunks, UnalignedBitChunk};
 use bitvec::view::BitView;
 
 use crate::bit::{get_bit_unchecked, ops, set_bit_unchecked, unset_bit_unchecked};
-use crate::{BitBuffer, BufferMut, ByteBufferMut, buffer_mut};
+use crate::{buffer_mut, BitBuffer, BufferMut, ByteBufferMut};
 
 /// A mutable bitset buffer that allows random access to individual bits for set and get.
 ///
@@ -28,7 +28,7 @@ use crate::{BitBuffer, BufferMut, ByteBufferMut, buffer_mut};
 /// ```
 ///
 /// See also: [`BitBuffer`].
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Default, Clone, Eq)]
 pub struct BitBufferMut {
     buffer: ByteBufferMut,
     /// Represents the offset of the bit buffer into the first byte.
@@ -534,12 +534,6 @@ impl BitBufferMut {
     }
 }
 
-impl Default for BitBufferMut {
-    fn default() -> Self {
-        Self::with_capacity(0)
-    }
-}
-
 // Mutate-in-place implementation of bitwise NOT.
 impl Not for BitBufferMut {
     type Output = BitBufferMut;
@@ -605,7 +599,7 @@ impl FromIterator<bool> for BitBufferMut {
 #[cfg(test)]
 mod tests {
     use crate::bit::buf_mut::BitBufferMut;
-    use crate::{BufferMut, bitbuffer, bitbuffer_mut, buffer_mut};
+    use crate::{bitbuffer, bitbuffer_mut, buffer_mut, BufferMut};
 
     #[test]
     fn test_bits_mut() {

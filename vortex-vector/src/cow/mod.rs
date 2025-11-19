@@ -5,7 +5,7 @@ mod bit_buffer;
 mod buffer;
 mod mask;
 
-use std::fmt;
+use std::{fmt, mem};
 
 /// A trait defining an immutable type that can be converted into a mutable counterpart.
 ///
@@ -36,7 +36,7 @@ pub enum Cow<F>
 where
     F: IntoMut,
 {
-    /// An frozen immutable value that is owned.
+    /// A frozen immutable value that is owned.
     Frozen(F),
     /// A mutable value that is owned.
     Mutable(<F as IntoMut>::Mutable),
@@ -56,27 +56,6 @@ where
         matches!(self, Cow::Mutable(_))
     }
 
-    /// Acquires a reference to the frozen form of the data.
-    ///
-    /// This will freeze the data if it was not yet frozen.
-    ///
-    /// We return a mutable reference for flexibility, but since `F` should be an immutable data
-    /// type, it should always be reborrowed as an immutable reference.
-    #[inline]
-    pub fn to_frozen(&mut self) -> &mut F {
-        match self {
-            Cow::Frozen(frozen) => frozen,
-            Cow::Mutable(mutable) => {
-                // TODO(connor): We can do some unsafe magic here to avoid the clone.
-                *self = Cow::Frozen(mutable.clone().freeze());
-                match self {
-                    Cow::Frozen(frozen) => frozen,
-                    _ => unreachable!(),
-                }
-            }
-        }
-    }
-
     /// Extracts the frozen data.
     ///
     /// This will freeze the data if it was not yet frozen.
@@ -84,24 +63,6 @@ where
         match self {
             Cow::Frozen(frozen) => frozen,
             Cow::Mutable(mutable) => mutable.freeze(),
-        }
-    }
-
-    /// Acquires a mutable reference to the mutable form of the data.
-    ///
-    /// Performs a deep clone of the data if it is not already mutable.
-    #[inline]
-    pub fn to_mut(&mut self) -> &mut <F as IntoMut>::Mutable {
-        match self {
-            Cow::Frozen(frozen) => {
-                // TODO(connor): We can do some unsafe magic here to avoid the clone.
-                *self = Cow::Mutable(frozen.clone().into_mut());
-                match self {
-                    Cow::Mutable(mutable) => mutable,
-                    _ => unreachable!(),
-                }
-            }
-            Cow::Mutable(mutable) => mutable,
         }
     }
 
@@ -113,6 +74,85 @@ where
             Cow::Frozen(frozen) => frozen.into_mut(),
             Cow::Mutable(mutable) => mutable,
         }
+    }
+
+    /// Acquires a reference to the frozen form of the data, if it is frozen.
+    pub fn as_frozen(&self) -> Option<&F> {
+        match self {
+            Cow::Frozen(frozen) => Some(frozen),
+            Cow::Mutable(_mutable) => None,
+        }
+    }
+
+    /// Acquires a reference to the mutable form of the data, if it is mutable.
+    pub fn as_mutable(&mut self) -> Option<&mut F::Mutable> {
+        match self {
+            Cow::Frozen(_frozen) => None,
+            Cow::Mutable(mutable) => Some(mutable),
+        }
+    }
+}
+
+impl<F> Cow<F>
+where
+    F: IntoMut,
+    <F as IntoMut>::Mutable: Default,
+{
+    /// Acquires a reference to the frozen form of the data.
+    ///
+    /// This will freeze the data if it was not yet frozen.
+    ///
+    /// We return a mutable reference for flexibility, but since `F` should be an immutable data
+    /// type, it should always be reborrowed as an immutable reference.
+    #[inline]
+    pub fn ensure_frozen(&mut self) -> &F {
+        match self {
+            Cow::Frozen(frozen) => frozen,
+            Cow::Mutable(mutable) => {
+                *self = Cow::Frozen(mem::take(mutable).freeze());
+                match self {
+                    Cow::Frozen(frozen) => frozen,
+                    _ => unsafe { std::hint::unreachable_unchecked() },
+                }
+            }
+        }
+    }
+}
+
+impl<F> Cow<F>
+where
+    F: IntoMut + Default,
+{
+    /// Acquires a mutable reference to the mutable form of the data.
+    ///
+    /// Performs a deep clone of the data if it is not already mutable.
+    #[inline]
+    pub fn ensure_mut(&mut self) -> &mut <F as IntoMut>::Mutable {
+        match self {
+            Cow::Frozen(frozen) => {
+                *self = Cow::Mutable(mem::take(frozen).into_mut());
+                match self {
+                    Cow::Mutable(mutable) => mutable,
+                    _ => unsafe { std::hint::unreachable_unchecked() },
+                }
+            }
+            Cow::Mutable(mutable) => mutable,
+        }
+    }
+}
+
+impl<F: IntoMut> From<F> for Cow<F> {
+    fn from(value: F) -> Self {
+        Cow::Frozen(value)
+    }
+}
+
+impl<F> Default for Cow<F>
+where
+    F: IntoMut + Default,
+{
+    fn default() -> Self {
+        Cow::Frozen(F::default())
     }
 }
 

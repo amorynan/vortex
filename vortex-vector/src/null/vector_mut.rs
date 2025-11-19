@@ -3,10 +3,9 @@
 
 //! Definition and implementation of [`NullVectorMut`].
 
-use vortex_mask::MaskMut;
+use vortex_mask::{Mask, MaskMut};
 
-use crate::VectorMutOps;
-// use crate::null::NullVector;
+use crate::{Cow, VectorMutOps};
 
 /// A mutable vector of null values.
 ///
@@ -16,77 +15,74 @@ use crate::VectorMutOps;
 /// The immutable equivalent of this type is [`NullVector`].
 #[derive(Debug, Clone)]
 pub struct NullVectorMut {
-    /// The total number of nulls.
-    pub(super) len: usize,
-    /// The validity mask. We only store this in order to implement the
-    /// [`validity()`](Self::validity) method.
-    pub(super) validity: MaskMut,
+    /// In theory, we only need to store a length, but in order to return `&Cow<Mask>` from the
+    /// [`validity()`](Self::validity) method, we instead store nulls in a validity mask.
+    pub(super) validity: Cow<Mask>,
 }
 
 impl NullVectorMut {
     /// Creates a new mutable vector of nulls with the given length.
     pub fn new(len: usize) -> Self {
         Self {
-            len,
-            validity: MaskMut::new_false(len),
+            validity: Cow::Mutable(MaskMut::new_false(len)),
         }
     }
 }
 
 impl VectorMutOps for NullVectorMut {
     fn len(&self) -> usize {
-        self.len
+        self.validity.len()
     }
 
-    fn validity(&self) -> &MaskMut {
+    fn validity(&self) -> &Cow<Mask> {
         &self.validity
     }
 
-    fn capacity(&self) -> usize {
-        usize::MAX
-    }
-
-    fn reserve(&mut self, _additional: usize) {
-        // We do not allocate memory for `NullVector`, so this is a no-op.
-    }
-
     fn clear(&mut self) {
-        self.len = 0;
+        self.validity.clear()
     }
 
     fn truncate(&mut self, len: usize) {
-        self.len = self.len.min(len);
+        self.validity.truncate(len);
     }
-
-    // fn extend_from_vector(&mut self, other: &NullVector) {
-    //     self.len += other.len;
-    // }
-
-    fn append_nulls(&mut self, n: usize) {
-        self.len += n;
-    }
-
-    // fn freeze(self) -> NullVector {
-    //     NullVector::new(self.len)
-    // }
 
     fn split_off(&mut self, at: usize) -> Self {
-        assert!(
-            at <= self.capacity(),
-            "split_off out of bounds: {:?} <= {:?}",
-            at,
-            self.capacity(),
-        );
-
-        let new_len = self.len.saturating_sub(at);
-        self.len = std::cmp::min(self.len, at);
-        NullVectorMut {
-            len: new_len,
-            validity: MaskMut::new_false(new_len),
-        }
+        // assert!(
+        //     at <= self.capacity(),
+        //     "split_off out of bounds: {:?} <= {:?}",
+        //     at,
+        //     self.capacity(),
+        // );
+        //
+        // let new_len = self.len.saturating_sub(at);
+        // self.len = std::cmp::min(self.len, at);
+        // NullVectorMut {
+        //     len: new_len,
+        //     validity: Cow::Mutable(MaskMut::new_false(new_len)),
+        // }
+        todo!()
     }
 
     fn unsplit(&mut self, other: Self) {
-        self.len += other.len;
+        // TODO(ngates): in theory we don't need to into_mut to unsplit
+        self.validity
+            .ensure_mut()
+            .unsplit(other.validity.into_mut());
+    }
+
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        unsafe { &mut self.validity }
+    }
+
+    fn ensure_frozen(&mut self) {
+        todo!()
+    }
+
+    fn append_zeros(&mut self, n: usize) {
+        self.validity.ensure_mut().append_n(false, n);
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        self.validity.ensure_mut().append_n(false, n);
     }
 }

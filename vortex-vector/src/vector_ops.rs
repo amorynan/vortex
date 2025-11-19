@@ -7,8 +7,6 @@
 // use std::fmt::Debug;
 // use std::ops::RangeBounds;
 
-use std::ops::RangeBounds;
-
 use vortex_mask::Mask;
 
 use crate::{Cow, VectorMut};
@@ -44,21 +42,21 @@ pub trait VectorMutOps: Into<VectorMut> + Sized {
     // /// Panics if the index is out of bounds.
     // fn scalar_at(&self, index: usize) -> Scalar;
 
-    /// Slice the vector from `start` to `end` (exclusive).
-    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self;
+    // /// Slice the vector from `start` to `end` (exclusive).
+    // fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self;
 
-    /// Returns the total number of elements the vector can hold without reallocating.
-    fn capacity(&self) -> usize;
+    // /// Returns the total number of elements the vector can hold without reallocating.
+    // fn capacity(&self) -> usize;
 
-    /// Reserves capacity for at least `additional` more elements to be inserted in the given
-    /// vector.
-    ///
-    /// The collection may reserve more space to speculatively avoid frequent reallocations. After
-    /// calling `reserve`, the capacity will be greater than or equal to `self.len() + additional`.
-    /// Does nothing if capacity is already sufficient.
-    ///
-    /// Please let us know if you need `reserve_exact` functionality!
-    fn reserve(&mut self, additional: usize);
+    // /// Reserves capacity for at least `additional` more elements to be inserted in the given
+    // /// vector.
+    // ///
+    // /// The collection may reserve more space to speculatively avoid frequent reallocations. After
+    // /// calling `reserve`, the capacity will be greater than or equal to `self.len() + additional`.
+    // /// Does nothing if capacity is already sufficient.
+    // ///
+    // /// Please let us know if you need `reserve_exact` functionality!
+    // fn reserve(&mut self, additional: usize);
 
     /// Clears the buffer, removing all data. Existing capacity is preserved.
     fn clear(&mut self);
@@ -70,13 +68,16 @@ pub trait VectorMutOps: Into<VectorMut> + Sized {
     /// Existing underlying capacity is preserved.
     fn truncate(&mut self, len: usize);
 
-    /// Extends the vector by appending elements from another vector.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the `other` vector has the wrong type (for example, a
-    /// [`StructVector`](crate::struct_::StructVector) might have incorrect fields).
-    fn extend_from_vector(&mut self, other: &Self);
+    // /// Extends the vector by appending elements from another vector.
+    // ///
+    // /// # Panics
+    // ///
+    // /// Panics if the `other` vector has the wrong type (for example, a
+    // /// [`StructVector`](crate::struct_::StructVector) might have incorrect fields).
+    // fn extend_from_vector(&mut self, other: &Self);
+
+    /// Appends `n` "zero" elements to the vector.
+    fn append_zeros(&mut self, n: usize);
 
     /// Appends `n` null elements to the vector.
     ///
@@ -84,8 +85,8 @@ pub trait VectorMutOps: Into<VectorMut> + Sized {
     /// elements in addition to adding nulls to their validity mask.
     fn append_nulls(&mut self, n: usize);
 
-    /// Converts `self` into an immutable vector by recursively calling [`Cow::freeze`].
-    fn freeze(self) -> Self;
+    /// Converts all [`crate::Cow`] objects in `self` into their frozen form.
+    fn ensure_frozen(&mut self);
 
     /// Splits the vector into two at the given index.
     ///

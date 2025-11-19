@@ -3,15 +3,13 @@
 
 //! Definition and implementation of [`PrimitiveVectorMut`].
 
-use std::ops::RangeBounds;
-
 use vortex_dtype::half::f16;
 use vortex_dtype::{NativePType, PType, PTypeDowncast, PTypeUpcast};
 use vortex_error::vortex_panic;
 use vortex_mask::Mask;
 
 use crate::primitive::PVectorMut;
-use crate::{Cow, VectorMutOps, match_each_pvector_mut};
+use crate::{match_each_pvector_mut, Cow, VectorMutOps};
 
 /// A mutable vector of primitive values.
 ///
@@ -96,18 +94,6 @@ impl VectorMutOps for PrimitiveVectorMut {
         unsafe { match_each_pvector_mut!(self, |v| { v.validity_mut() }) }
     }
 
-    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self {
-        match_each_pvector_mut!(self, |v| { v.slice(range).into() })
-    }
-
-    fn capacity(&self) -> usize {
-        match_each_pvector_mut!(self, |v| { v.capacity() })
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        match_each_pvector_mut!(self, |v| { v.reserve(additional) })
-    }
-
     fn clear(&mut self) {
         match_each_pvector_mut!(self, |v| { v.clear() })
     }
@@ -116,29 +102,16 @@ impl VectorMutOps for PrimitiveVectorMut {
         match_each_pvector_mut!(self, |v| { v.truncate(len) })
     }
 
-    fn extend_from_vector(&mut self, other: &Self) {
-        match (self, other) {
-            (Self::U8(a), Self::U8(b)) => a.extend_from_vector(b),
-            (Self::U16(a), Self::U16(b)) => a.extend_from_vector(b),
-            (Self::U32(a), Self::U32(b)) => a.extend_from_vector(b),
-            (Self::U64(a), Self::U64(b)) => a.extend_from_vector(b),
-            (Self::I8(a), Self::I8(b)) => a.extend_from_vector(b),
-            (Self::I16(a), Self::I16(b)) => a.extend_from_vector(b),
-            (Self::I32(a), Self::I32(b)) => a.extend_from_vector(b),
-            (Self::I64(a), Self::I64(b)) => a.extend_from_vector(b),
-            (Self::F16(a), Self::F16(b)) => a.extend_from_vector(b),
-            (Self::F32(a), Self::F32(b)) => a.extend_from_vector(b),
-            (Self::F64(a), Self::F64(b)) => a.extend_from_vector(b),
-            _ => ::vortex_error::vortex_panic!("Mismatched primitive vector types"),
-        }
+    fn append_zeros(&mut self, n: usize) {
+        match_each_pvector_mut!(self, |v| { v.append_zeros(n) })
     }
 
     fn append_nulls(&mut self, n: usize) {
         match_each_pvector_mut!(self, |v| { v.append_nulls(n) })
     }
 
-    fn freeze(self) -> Self {
-        match_each_pvector_mut!(self, |v| { v.freeze().into() })
+    fn ensure_frozen(&mut self) {
+        match_each_pvector_mut!(self, |v| { v.ensure_frozen() })
     }
 
     fn split_off(&mut self, at: usize) -> Self {
@@ -384,8 +357,7 @@ mod tests {
         let vec_i32: PrimitiveVectorMut =
             PVectorMut::<i32>::from_iter(vec![Some(1), None, Some(3), None, Some(5)]).into();
         assert_eq!(vec_i32.len(), 5);
-        let frozen = vec_i32.freeze();
-        assert_eq!(frozen.validity().true_count(), 3);
+        assert_eq!(vec_i32.validity().true_count(), 3);
 
         // Test empty iterator.
         let vec_empty: PrimitiveVectorMut =
@@ -395,8 +367,7 @@ mod tests {
         // Test that None values use T::default().
         let vec_nulls: PrimitiveVectorMut = PVectorMut::<i32>::from_iter([None, None, None]).into();
         // Check that validity is all false for nulls.
-        let frozen = vec_nulls.freeze();
-        assert_eq!(frozen.validity().true_count(), 0);
+        assert_eq!(vec_nulls.validity().true_count(), 0);
     }
 
     #[test]
@@ -405,13 +376,11 @@ mod tests {
         let vec_f64: PrimitiveVectorMut =
             PVectorMut::<f64>::from_iter([1.5, 2.5, 3.5, 4.5, 5.5]).into();
         assert_eq!(vec_f64.len(), 5);
-        let frozen = vec_f64.freeze();
-        assert_eq!(frozen.validity().true_count(), 5); // All valid.
+        assert_eq!(vec_f64.validity().true_count(), 5); // All valid.
 
         let vec_u16: PrimitiveVectorMut = PVectorMut::<u16>::from_iter([1u16, 2, 3, 4, 5]).into();
         assert_eq!(vec_u16.len(), 5);
-        let frozen = vec_u16.freeze();
-        assert_eq!(frozen.validity().true_count(), 5);
+        assert_eq!(vec_u16.validity().true_count(), 5);
     }
 
     #[test]
@@ -424,17 +393,14 @@ mod tests {
         assert_eq!(vec.len(), 2);
         assert_eq!(second_half.len(), 3);
 
-        let first_frozen = vec.freeze();
-        let second_frozen = second_half.freeze();
-        assert_eq!(first_frozen.validity().true_count(), 1);
-        assert_eq!(second_frozen.validity().true_count(), 2);
+        assert_eq!(vec.validity().true_count(), 1);
+        assert_eq!(second_half.validity().true_count(), 2);
 
         // Test unsplit.
         let mut vec1: PrimitiveVectorMut = PVectorMut::<u32>::from_iter([Some(1000), None]).into();
         let vec2: PrimitiveVectorMut = PVectorMut::<u32>::from_iter([None, Some(2000)]).into();
         vec1.unsplit(vec2);
         assert_eq!(vec1.len(), 4);
-        let frozen = vec1.freeze();
-        assert_eq!(frozen.validity().true_count(), 2);
+        assert_eq!(vec1.validity().true_count(), 2);
     }
 }

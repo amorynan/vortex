@@ -9,7 +9,7 @@ use std::ops::Range;
 
 use static_assertions::{assert_eq_align, assert_eq_size};
 use vortex_buffer::ByteBuffer;
-use vortex_error::{VortexResult, VortexUnwrap, vortex_ensure, vortex_err};
+use vortex_error::{vortex_ensure, vortex_err, VortexResult, VortexUnwrap};
 
 /// A view over a variable-length binary value.
 ///
@@ -279,7 +279,7 @@ impl fmt::Debug for BinaryView {
 ///    the type constraints as defined by the `validator`.
 pub(super) fn validate_views<ValidateFn, IsValidFn>(
     views: &[BinaryView],
-    buffers: impl AsRef<[ByteBuffer]>,
+    buffers: &[ByteBuffer],
     validity: IsValidFn,
     validator: ValidateFn,
 ) -> VortexResult<()>
@@ -287,7 +287,6 @@ where
     IsValidFn: Fn(usize) -> bool,
     ValidateFn: Fn(&[u8]) -> bool,
 {
-    let buffers = buffers.as_ref();
     for (idx, &view) in views.iter().enumerate() {
         if !validity(idx) {
             continue;
@@ -310,21 +309,22 @@ where
             let buf = buffers.get(buf_index).ok_or_else(||
                 vortex_err!("view at index {idx} references invalid buffer: {buf_index} out of bounds for BinaryViewVector with {} buffers",
                         buffers.len()))?;
+            let buf_slice = buf.as_ref();
 
             vortex_ensure!(
-                start_offset < buf.len(),
+                start_offset < buf_slice.len(),
                 "start offset {start_offset} out of bounds for buffer {buf_index} with size {}",
-                buf.len(),
+                buf_slice.len(),
             );
 
             vortex_ensure!(
-                end_offset <= buf.len(),
+                end_offset <= buf_slice.len(),
                 "end offset {end_offset} out of bounds for buffer {buf_index} with size {}",
-                buf.len(),
+                buf_slice.len(),
             );
 
             // Make sure the prefix data matches the buffer data.
-            let bytes = &buf[start_offset..end_offset];
+            let bytes = &buf_slice[start_offset..end_offset];
             vortex_ensure!(
                 view.prefix == bytes[..4],
                 "VarBinView prefix does not match full string"

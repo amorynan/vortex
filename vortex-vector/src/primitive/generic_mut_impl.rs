@@ -5,8 +5,8 @@
 
 use vortex_dtype::NativePType;
 
-use crate::VectorMutOps;
 use crate::primitive::PVectorMut;
+use crate::VectorMutOps;
 
 /// Point operations for [`PVectorMut`].
 impl<T: NativePType> PVectorMut<T> {
@@ -32,8 +32,8 @@ impl<T: NativePType> PVectorMut<T> {
     ///
     /// The element is treated as non-null.
     pub fn push(&mut self, value: T) {
-        self.elements.to_mut().push(value);
-        self.validity.to_mut().append_n(true, 1);
+        self.elements.ensure_mut().push(value);
+        self.validity.ensure_mut().append_n(true, 1);
     }
 
     /// Pushes an element without bounds checking.
@@ -47,7 +47,7 @@ impl<T: NativePType> PVectorMut<T> {
     #[inline]
     pub unsafe fn push_unchecked(&mut self, value: T) {
         let len = self.len();
-        let elements = self.elements.to_mut();
+        let elements = self.elements.ensure_mut();
 
         // SAFETY: The caller guarantees there is sufficient capacity in the elements buffer,
         // so we can write to the spare capacity and increment the length without bounds checks.
@@ -55,7 +55,7 @@ impl<T: NativePType> PVectorMut<T> {
             elements.spare_capacity_mut()[0].write(value);
             elements.set_len(len + 1);
         }
-        self.validity.to_mut().append_n(true, 1);
+        self.validity.ensure_mut().append_n(true, 1);
     }
 
     /// Appends an optional element to the back of the vector, where `None` represents a null
@@ -64,8 +64,8 @@ impl<T: NativePType> PVectorMut<T> {
         if let Some(value) = value {
             self.push(value);
         } else {
-            self.elements.to_mut().push(T::default());
-            self.validity.to_mut().append_n(false, 1);
+            self.elements.ensure_mut().push(T::default());
+            self.validity.ensure_mut().append_n(false, 1);
         }
     }
 
@@ -78,8 +78,8 @@ impl<T: NativePType> PVectorMut<T> {
     ///
     /// [`capacity()`]: Self::capacity
     pub unsafe fn set_len(&mut self, new_len: usize) {
-        let elements = self.elements.to_mut();
-        let validity = self.validity.to_mut();
+        let elements = self.elements.ensure_mut();
+        let validity = self.validity.ensure_mut();
 
         debug_assert!(new_len < elements.capacity());
         debug_assert!(new_len < validity.capacity());
@@ -115,7 +115,7 @@ impl<T: NativePType> AsMut<[T]> for PVectorMut<T> {
     /// [`validity()`]: crate::VectorOps::validity
     #[inline]
     fn as_mut(&mut self) -> &mut [T] {
-        self.elements.to_mut().as_mut_slice()
+        self.elements.ensure_mut().as_mut_slice()
     }
 }
 
@@ -137,12 +137,12 @@ impl<T: NativePType> PVectorMut<T> {
 
             match value {
                 Some(value) => {
-                    self.elements.to_mut().push_n(value, additional);
-                    self.validity.to_mut().append_n(true, additional);
+                    self.elements.ensure_mut().push_n(value, additional);
+                    self.validity.ensure_mut().append_n(true, additional);
                 }
                 None => {
-                    self.elements.to_mut().push_n(T::default(), additional);
-                    self.validity.to_mut().append_n(false, additional);
+                    self.elements.ensure_mut().push_n(T::default(), additional);
+                    self.validity.ensure_mut().append_n(false, additional);
                 }
             }
         }
@@ -153,8 +153,8 @@ impl<T: NativePType> PVectorMut<T> {
     where
         T: Copy,
     {
-        self.elements.to_mut().push_n(value, n);
-        self.validity.to_mut().append_n(true, n);
+        self.elements.ensure_mut().push_n(value, n);
+        self.validity.ensure_mut().append_n(true, n);
     }
 }
 

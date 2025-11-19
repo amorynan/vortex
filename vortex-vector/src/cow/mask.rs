@@ -37,6 +37,22 @@ impl Cow<Mask> {
         self.len() == 0
     }
 
+    /// Clear the mask. Note that this will not preserve existing capacity for frozen masks.
+    pub fn clear(&mut self) {
+        match self {
+            Cow::Frozen(frozen) => frozen.clear(),
+            Cow::Mutable(mutable) => mutable.clear(),
+        }
+    }
+
+    /// Truncate the mask to the given length.
+    pub fn truncate(&mut self, len: usize) {
+        match self {
+            Cow::Frozen(frozen) => frozen.truncate(len),
+            Cow::Mutable(mutable) => mutable.truncate(len),
+        }
+    }
+
     /// Returns the boolean value at a given index.
     ///
     /// ## Panics

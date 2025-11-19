@@ -3,13 +3,10 @@
 
 //! Definition and implementation of [`BoolVectorMut`].
 
-use std::ops::RangeBounds;
-
 use vortex_buffer::{BitBuffer, BitBufferMut};
-use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
+use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
 use vortex_mask::{Mask, MaskMut};
 
-// use crate::bool::BoolVector;
 use crate::{Cow, VectorMutOps};
 
 /// A mutable vector of boolean values.
@@ -78,8 +75,8 @@ impl BoolVectorMut {
 
     /// Append n values to the vector.
     pub fn append_values(&mut self, value: bool, n: usize) {
-        self.bits.to_mut().append_n(value, n);
-        self.validity.to_mut().append_n(true, n);
+        self.bits.ensure_mut().append_n(value, n);
+        self.validity.ensure_mut().append_n(true, n);
     }
 
     /// Returns a readonly handle to the bits backing the vector.
@@ -112,56 +109,20 @@ impl VectorMutOps for BoolVectorMut {
         &mut self.validity
     }
 
-    fn capacity(&self) -> usize {
-        // TODO(connor): It seems weird that we would need to call `to_mut` here.
-        // Similar issue as in primitive - capacity needs design decision.
-        todo!("TODO(connor): capacity() needs design decision for Cow types")
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        self.bits.to_mut().reserve(additional);
-        self.validity.to_mut().reserve(additional);
-    }
-
     fn clear(&mut self) {
-        self.bits.to_mut().clear();
-        self.validity.to_mut().clear();
+        self.bits.ensure_mut().clear();
+        self.validity.ensure_mut().clear();
     }
 
     fn truncate(&mut self, len: usize) {
-        self.bits.to_mut().truncate(len);
-        self.validity.to_mut().truncate(len);
-    }
-
-    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self {
-        // TODO(connor): `Cow<BitBuffer>::slice()` for the Mutable variant may not be fully implemented.
-        let bits = self.bits.slice(range.clone());
-        let validity = self.validity.slice(range);
-        Self::new(bits, validity)
-    }
-
-    fn extend_from_vector(&mut self, _other: &Self) {
-        // TODO(connor): Need to figure out how to extend from Cow types.
-        // The issue is appending from potentially frozen BitBuffer/Mask.
-        todo!("TODO(connor): extend_from_vector needs implementation for Cow types")
-    }
-
-    fn append_nulls(&mut self, n: usize) {
-        self.bits.to_mut().append_n(false, n); // Note that the value we push doesn't actually matter.
-        self.validity.to_mut().append_n(false, n);
-    }
-
-    fn freeze(self) -> Self {
-        Self {
-            bits: Cow::Frozen(self.bits.freeze()),
-            validity: Cow::Frozen(self.validity.freeze()),
-        }
+        self.bits.ensure_mut().truncate(len);
+        self.validity.ensure_mut().truncate(len);
     }
 
     fn split_off(&mut self, at: usize) -> Self {
         Self {
-            bits: Cow::Mutable(self.bits.to_mut().split_off(at)),
-            validity: Cow::Mutable(self.validity.to_mut().split_off(at)),
+            bits: Cow::Mutable(self.bits.ensure_mut().split_off(at)),
+            validity: Cow::Mutable(self.validity.ensure_mut().split_off(at)),
         }
     }
 
@@ -170,8 +131,25 @@ impl VectorMutOps for BoolVectorMut {
             *self = other;
             return;
         }
-        self.bits.to_mut().unsplit(other.bits.into_mut());
-        self.validity.to_mut().unsplit(other.validity.into_mut());
+        self.bits.ensure_mut().unsplit(other.bits.into_mut());
+        self.validity
+            .ensure_mut()
+            .unsplit(other.validity.into_mut());
+    }
+
+    fn ensure_frozen(&mut self) {
+        self.bits.ensure_frozen();
+        self.validity.ensure_frozen();
+    }
+
+    fn append_zeros(&mut self, n: usize) {
+        self.bits.ensure_mut().append_n(false, n);
+        self.validity.ensure_mut().append_n(true, n);
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        self.bits.ensure_mut().append_n(false, n);
+        self.validity.ensure_mut().append_n(false, n);
     }
 }
 

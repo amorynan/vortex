@@ -6,11 +6,11 @@
 // use std::sync::Arc;
 
 use vortex_dtype::DType;
-use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
-use vortex_mask::MaskMut;
+use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
+use vortex_mask::{Mask, MaskMut};
 
 // use crate::fixed_size_list::FixedSizeListVector;
-use crate::{VectorMut, VectorMutOps};
+use crate::{Cow, VectorMut, VectorMutOps};
 
 /// A mutable vector of fixed-size lists.
 ///
@@ -28,7 +28,7 @@ use crate::{VectorMut, VectorMutOps};
 /// - The `elements` vector has length `n * list_size`
 /// - The `validity` mask has length `n`
 /// - Each list `i` occupies `elements[i * list_size..(i+1) * list_size]
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct FixedSizeListVectorMut {
     /// The mutable child vector of elements.
     pub(super) elements: Box<VectorMut>,
@@ -40,7 +40,7 @@ pub struct FixedSizeListVectorMut {
     ///
     /// Note that the `elements` vector will have its own internal validity, denoting if individual
     /// list elements are null.
-    pub(super) validity: MaskMut,
+    pub(super) validity: Cow<Mask>,
 
     /// The length of the vector (which is the same as the length of the validity mask).
     ///
@@ -59,7 +59,7 @@ impl FixedSizeListVectorMut {
     ///
     /// Put another way, the length of the `elements` vector divided by the `list_size` must be
     /// equal to the length of the validity, or this function will panic.
-    pub fn new(elements: Box<VectorMut>, list_size: u32, validity: MaskMut) -> Self {
+    pub fn new(elements: Box<VectorMut>, list_size: u32, validity: Cow<Mask>) -> Self {
         Self::try_new(elements, list_size, validity)
             .vortex_expect("Failed to create `FixedSizeListVectorMut`")
     }
@@ -77,7 +77,7 @@ impl FixedSizeListVectorMut {
     pub fn try_new(
         elements: Box<VectorMut>,
         list_size: u32,
-        validity: MaskMut,
+        validity: Cow<Mask>,
     ) -> VortexResult<Self> {
         let len = validity.len();
         let elements_len = elements.len();
@@ -113,7 +113,7 @@ impl FixedSizeListVectorMut {
     pub unsafe fn new_unchecked(
         elements: Box<VectorMut>,
         list_size: u32,
-        validity: MaskMut,
+        validity: Cow<Mask>,
     ) -> Self {
         let len = validity.len();
 
@@ -136,20 +136,19 @@ impl FixedSizeListVectorMut {
             capacity * list_size as usize,
         ));
 
-        let validity = MaskMut::with_capacity(capacity);
-        let len = validity.len();
+        let validity = Cow::Mutable(MaskMut::with_capacity(capacity));
 
         Self {
             elements,
             list_size,
             validity,
-            len,
+            len: 0,
         }
     }
 
     /// Decomposes the `FixedSizeListVector` into its constituent parts (child elements, list size,
     /// and validity).
-    pub fn into_parts(self) -> (Box<VectorMut>, u32, MaskMut) {
+    pub fn into_parts(self) -> (Box<VectorMut>, u32, Cow<Mask>) {
         (self.elements, self.list_size, self.validity)
     }
 
@@ -170,56 +169,21 @@ impl VectorMutOps for FixedSizeListVectorMut {
         self.len
     }
 
-    fn validity(&self) -> &MaskMut {
+    fn validity(&self) -> &Cow<Mask> {
         &self.validity
-    }
-
-    /// In the case that `list_size == 0`, the capacity of the vector is infinite because it will
-    /// never take up any space.
-    fn capacity(&self) -> usize {
-        self.elements
-            .capacity()
-            .checked_div(self.list_size as usize)
-            .unwrap_or(usize::MAX)
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        self.elements.reserve(additional * self.list_size as usize);
     }
 
     fn clear(&mut self) {
         self.elements.clear();
-        self.validity.clear();
+        // self.validity.clear();
         self.len = 0;
     }
 
     fn truncate(&mut self, len: usize) {
         let new_len = len.min(self.len);
         self.elements.truncate(new_len * self.list_size as usize);
-        self.validity.truncate(new_len);
+        // self.validity.truncate(new_len);
         self.len = new_len;
-    }
-
-    // fn extend_from_vector(&mut self, other: &FixedSizeListVector) {
-    //     match_vector_pair!(
-    //         self.elements.as_mut(),
-    //         other.elements.as_ref(),
-    //         |a: VectorMut, b: Vector| {
-    //             // This will panic if `other.elements` is not the correct type of vector.
-    //             a.extend_from_vector(b);
-    //         }
-    //     );
-
-    //     self.validity.append_mask(&other.validity);
-    //     self.len += other.len;
-    //     debug_assert_eq!(self.len, self.validity.len());
-    // }
-
-    fn append_nulls(&mut self, n: usize) {
-        self.elements.append_nulls(n * self.list_size as usize);
-        self.validity.append_n(false, n);
-        self.len += n;
-        debug_assert_eq!(self.len, self.validity.len());
     }
 
     // fn freeze(self) -> FixedSizeListVector {
@@ -232,27 +196,28 @@ impl VectorMutOps for FixedSizeListVectorMut {
     // }
 
     fn split_off(&mut self, at: usize) -> Self {
-        assert!(
-            at <= self.capacity(),
-            "split_off out of bounds: {} > {}",
-            at,
-            self.capacity()
-        );
-
-        let split_elements = self.elements.split_off(at * self.list_size as usize);
-
-        let split_validity = self.validity.split_off(at);
-        let split_len = self.len.saturating_sub(at);
-        self.len = at;
-
-        debug_assert_eq!(self.len, self.validity.len());
-
-        Self {
-            elements: Box::new(split_elements),
-            list_size: self.list_size,
-            validity: split_validity,
-            len: split_len,
-        }
+        // assert!(
+        //     at <= self.capacity(),
+        //     "split_off out of bounds: {} > {}",
+        //     at,
+        //     self.capacity()
+        // );
+        //
+        // let split_elements = self.elements.split_off(at * self.list_size as usize);
+        //
+        // let split_validity = self.validity.split_off(at);
+        // let split_len = self.len.saturating_sub(at);
+        // self.len = at;
+        //
+        // debug_assert_eq!(self.len, self.validity.len());
+        //
+        // Self {
+        //     elements: Box::new(split_elements),
+        //     list_size: self.list_size,
+        //     validity: split_validity,
+        //     len: split_len,
+        // }
+        todo!()
     }
 
     fn unsplit(&mut self, other: Self) {
@@ -264,10 +229,26 @@ impl VectorMutOps for FixedSizeListVectorMut {
         }
 
         self.elements.unsplit(*other.elements);
-        self.validity.unsplit(other.validity);
+        // self.validity.unsplit(other.validity);
 
         self.len += other.len;
         debug_assert_eq!(self.len, self.validity.len());
+    }
+
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        &mut self.validity
+    }
+
+    fn ensure_frozen(&mut self) {
+        todo!()
+    }
+
+    fn append_zeros(&mut self, n: usize) {
+        todo!()
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        todo!()
     }
 }
 

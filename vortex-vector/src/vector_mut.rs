@@ -6,8 +6,6 @@
 //!
 //! [`VectorMut`] can be frozen into the [`Vector`] type.
 
-use std::ops::RangeBounds;
-
 use vortex_dtype::DType;
 use vortex_error::vortex_panic;
 use vortex_mask::Mask;
@@ -20,7 +18,7 @@ use crate::listview::ListViewVectorMut;
 use crate::null::NullVectorMut;
 use crate::primitive::PrimitiveVectorMut;
 use crate::struct_::StructVectorMut;
-use crate::{Cow, VectorMutOps, match_each_vector_mut, match_vector_pair};
+use crate::{match_each_vector_mut, match_vector_pair, Cow, VectorMutOps};
 
 /// An enum over all kinds of mutable vectors, which represent fully decompressed (canonical) array
 /// data.
@@ -31,7 +29,7 @@ use crate::{Cow, VectorMutOps, match_each_vector_mut, match_vector_pair};
 ///
 /// The immutable equivalent of this type is [`Vector`], which implements the
 /// [`VectorOps`](crate::VectorOps) trait.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum VectorMut {
     /// Mutable Null vectors.
     Null(NullVectorMut),
@@ -102,18 +100,6 @@ impl VectorMutOps for VectorMut {
         unsafe { match_each_vector_mut!(self, |v| { v.validity_mut() }) }
     }
 
-    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self {
-        match_each_vector_mut!(self, |v| { v.slice(range).into() })
-    }
-
-    fn capacity(&self) -> usize {
-        match_each_vector_mut!(self, |v| { v.capacity() })
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        match_each_vector_mut!(self, |v| { v.reserve(additional) })
-    }
-
     fn clear(&mut self) {
         match_each_vector_mut!(self, |v| { v.clear() })
     }
@@ -122,26 +108,24 @@ impl VectorMutOps for VectorMut {
         match_each_vector_mut!(self, |v| { v.truncate(len) })
     }
 
-    fn extend_from_vector(&mut self, other: &Self) {
-        match_vector_pair!(self, other, |a: VectorMut, b: VectorMut| {
-            a.extend_from_vector(b)
-        })
-    }
-
-    fn append_nulls(&mut self, n: usize) {
-        match_each_vector_mut!(self, |v| { v.append_nulls(n) })
-    }
-
-    fn freeze(self) -> Self {
-        match_each_vector_mut!(self, |v| { v.freeze().into() })
-    }
-
     fn split_off(&mut self, at: usize) -> Self {
         match_each_vector_mut!(self, |v| { v.split_off(at).into() })
     }
 
     fn unsplit(&mut self, other: Self) {
         match_vector_pair!(self, other, |a: VectorMut, b: VectorMut| a.unsplit(b))
+    }
+
+    fn ensure_frozen(&mut self) {
+        match_each_vector_mut!(self, |v| { v.ensure_frozen() })
+    }
+
+    fn append_zeros(&mut self, n: usize) {
+        match_each_vector_mut!(self, |v| { v.append_zeros(n) })
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        match_each_vector_mut!(self, |v| { v.append_nulls(n) })
     }
 }
 

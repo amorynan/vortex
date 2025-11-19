@@ -3,11 +3,9 @@
 
 //! Definition and implementation of [`DVectorMut<D>`].
 
-use std::ops::RangeBounds;
-
 use vortex_buffer::{Buffer, BufferMut};
 use vortex_dtype::{NativeDecimalType, PrecisionScale};
-use vortex_error::{VortexExpect, VortexResult, vortex_bail};
+use vortex_error::{vortex_bail, VortexExpect, VortexResult};
 use vortex_mask::{Mask, MaskMut};
 
 use crate::{Cow, VectorMutOps};
@@ -184,8 +182,8 @@ impl<D: NativeDecimalType> DVectorMut<D> {
             vortex_bail!("Value {:?} is out of bounds for {}", value, self.ps);
         }
 
-        self.elements.to_mut().push_n(value, n);
-        self.validity.to_mut().append_n(true, n);
+        self.elements.ensure_mut().push_n(value, n);
+        self.validity.ensure_mut().append_n(true, n);
         Ok(())
     }
 }
@@ -209,58 +207,21 @@ impl<D: NativeDecimalType> VectorMutOps for DVectorMut<D> {
         &mut self.validity
     }
 
-    fn capacity(&self) -> usize {
-        // TODO(connor): It seems weird that we would need to call `to_mut` here.
-        // Similar issue as in primitive - capacity needs design decision.
-        todo!("TODO(connor): capacity() needs design decision for Cow types")
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        self.elements.to_mut().reserve(additional);
-        self.validity.to_mut().reserve(additional);
-    }
-
     fn clear(&mut self) {
-        self.elements.to_mut().clear();
-        self.validity.to_mut().clear();
+        self.elements.ensure_mut().clear();
+        self.validity.ensure_mut().clear();
     }
 
     fn truncate(&mut self, len: usize) {
-        self.elements.to_mut().truncate(len);
-        self.validity.to_mut().truncate(len);
-    }
-
-    fn slice(&self, range: impl RangeBounds<usize> + Clone) -> Self {
-        // TODO(connor): `Cow<Buffer<D>>::slice()` for the Mutable variant may not be fully implemented.
-        let elements = self.elements.slice(range.clone());
-        let validity = self.validity.slice(range);
-        Self::new(self.ps, elements, validity)
-    }
-
-    fn extend_from_vector(&mut self, _other: &Self) {
-        // TODO(connor): Need to figure out how to extend from Cow types.
-        // The issue is appending from potentially frozen masks/buffers.
-        todo!("TODO(connor): extend_from_vector needs implementation for Cow types")
-    }
-
-    fn append_nulls(&mut self, n: usize) {
-        self.elements.to_mut().extend((0..n).map(|_| D::default()));
-        self.validity.to_mut().append_n(false, n);
-    }
-
-    fn freeze(self) -> Self {
-        Self {
-            ps: self.ps,
-            elements: Cow::Frozen(self.elements.freeze()),
-            validity: Cow::Frozen(self.validity.freeze()),
-        }
+        self.elements.ensure_mut().truncate(len);
+        self.validity.ensure_mut().truncate(len);
     }
 
     fn split_off(&mut self, at: usize) -> Self {
         DVectorMut {
             ps: self.ps,
-            elements: Cow::Mutable(self.elements.to_mut().split_off(at)),
-            validity: Cow::Mutable(self.validity.to_mut().split_off(at)),
+            elements: Cow::Mutable(self.elements.ensure_mut().split_off(at)),
+            validity: Cow::Mutable(self.validity.ensure_mut().split_off(at)),
         }
     }
 
@@ -269,8 +230,27 @@ impl<D: NativeDecimalType> VectorMutOps for DVectorMut<D> {
             *self = other;
             return;
         }
-        self.elements.to_mut().unsplit(other.elements.into_mut());
-        self.validity.to_mut().unsplit(other.validity.into_mut());
+        self.elements
+            .ensure_mut()
+            .unsplit(other.elements.into_mut());
+        self.validity
+            .ensure_mut()
+            .unsplit(other.validity.into_mut());
+    }
+
+    fn ensure_frozen(&mut self) {
+        self.elements.ensure_frozen();
+        self.validity.ensure_frozen();
+    }
+
+    fn append_zeros(&mut self, n: usize) {
+        self.elements.ensure_mut().push_n(D::default(), n);
+        self.validity.ensure_mut().append_n(true, n);
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        self.elements.ensure_mut().push_n(D::default(), n);
+        self.validity.ensure_mut().append_n(false, n);
     }
 }
 

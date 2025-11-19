@@ -6,22 +6,22 @@
 // use std::sync::Arc;
 
 use vortex_dtype::StructFields;
-use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
-use vortex_mask::MaskMut;
+use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
+use vortex_mask::{Mask, MaskMut};
 
-use crate::{VectorMut, VectorMutOps, match_vector_pair};
+use crate::{match_vector_pair, Cow, VectorMut, VectorMutOps};
 
 /// A mutable vector of struct values (values with named fields).
 ///
 /// Struct values are stored column-wise in the vector, so values in the same field are stored next
 /// to each other (rather than values in the same struct stored next to each other).
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StructVectorMut {
     /// The (owned) fields of the `StructVectorMut`, each stored column-wise as a [`VectorMut`].
     pub(super) fields: Box<[VectorMut]>,
 
     /// The validity mask (where `true` represents an element is **not** null).
-    pub(super) validity: MaskMut,
+    pub(super) validity: Cow<Mask>,
 
     /// The length of the vector (which is the same as all field vectors).
     ///
@@ -39,7 +39,7 @@ impl StructVectorMut {
     ///
     /// - Any field vector has a length that does not match the length of other fields.
     /// - The validity mask length does not match the field length.
-    pub fn new(fields: Box<[VectorMut]>, validity: MaskMut) -> Self {
+    pub fn new(fields: Box<[VectorMut]>, validity: Cow<Mask>) -> Self {
         Self::try_new(fields, validity).vortex_expect("Failed to create `StructVectorMut`")
     }
 
@@ -51,7 +51,7 @@ impl StructVectorMut {
     ///
     /// - Any field vector has a length that does not match the length of other fields.
     /// - The validity mask length does not match the field length.
-    pub fn try_new(fields: Box<[VectorMut]>, validity: MaskMut) -> VortexResult<Self> {
+    pub fn try_new(fields: Box<[VectorMut]>, validity: Cow<Mask>) -> VortexResult<Self> {
         let len = validity.len();
 
         // Validate that all fields have the correct length.
@@ -81,7 +81,7 @@ impl StructVectorMut {
     ///
     /// - All field vectors have the same length.
     /// - The validity mask has a length equal to the field length.
-    pub unsafe fn new_unchecked(fields: Box<[VectorMut]>, validity: MaskMut) -> Self {
+    pub unsafe fn new_unchecked(fields: Box<[VectorMut]>, validity: Cow<Mask>) -> Self {
         let len = validity.len();
 
         if cfg!(debug_assertions) {
@@ -102,18 +102,17 @@ impl StructVectorMut {
             .map(|dtype| VectorMut::with_capacity(&dtype, capacity))
             .collect();
 
-        let validity = MaskMut::with_capacity(capacity);
-        let len = validity.len();
+        let validity = Cow::Mutable(MaskMut::with_capacity(capacity));
 
         Self {
             fields: fields.into_boxed_slice(),
             validity,
-            len,
+            len: 0,
         }
     }
 
     /// Decomposes the struct vector into its constituent parts (fields, validity, and length).
-    pub fn into_parts(self) -> (Box<[VectorMut]>, MaskMut, usize) {
+    pub fn into_parts(self) -> (Box<[VectorMut]>, Cow<Mask>, usize) {
         (self.fields, self.validity, self.len)
     }
 
@@ -140,7 +139,7 @@ impl StructVectorMut {
     /// Callers must ensure that if the length of the mask is modified, the lengths
     /// of all of the field vectors should be updated accordingly to continue meeting
     /// the invariants of the type.
-    pub unsafe fn validity_mut(&mut self) -> &mut MaskMut {
+    pub unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
         &mut self.validity
     }
 
@@ -153,11 +152,12 @@ impl StructVectorMut {
     ///
     /// Note that this takes time in `O(f)`, where `f` is the number of fields.
     pub fn minimum_capacity(&self) -> usize {
-        self.fields
-            .iter()
-            .map(|field| field.capacity())
-            .min()
-            .unwrap_or(self.len)
+        // self.fields
+        //     .iter()
+        //     .map(|field| field.capacity())
+        //     .min()
+        //     .unwrap_or(self.len)
+        todo!()
     }
 }
 
@@ -166,27 +166,8 @@ impl VectorMutOps for StructVectorMut {
         self.len
     }
 
-    fn validity(&self) -> &MaskMut {
+    fn validity(&self) -> &Cow<Mask> {
         &self.validity
-    }
-
-    fn capacity(&self) -> usize {
-        self.minimum_capacity()
-    }
-
-    fn reserve(&mut self, additional: usize) {
-        // Reserve the additional capacity in each field vector.
-        for field in &mut self.fields {
-            field.reserve(additional);
-
-            debug_assert_eq!(
-                field.len(),
-                self.len,
-                "Field length must match `StructVectorMut` length"
-            );
-        }
-
-        self.validity.reserve(additional);
     }
 
     fn clear(&mut self) {
@@ -194,7 +175,7 @@ impl VectorMutOps for StructVectorMut {
             field.clear();
         }
 
-        self.validity.clear();
+        // self.validity.clear();
         self.len = 0;
     }
 
@@ -203,7 +184,7 @@ impl VectorMutOps for StructVectorMut {
             field.truncate(len);
         }
 
-        self.validity.truncate(len);
+        // self.validity.truncate(len);
         self.len = self.validity.len();
     }
 
@@ -231,16 +212,6 @@ impl VectorMutOps for StructVectorMut {
     //     debug_assert_eq!(self.len, self.validity.len());
     // }
 
-    fn append_nulls(&mut self, n: usize) {
-        for field in &mut self.fields {
-            field.append_nulls(n); // Note that the value we push to each doesn't actually matter.
-        }
-
-        self.validity.append_n(false, n);
-        self.len += n;
-        debug_assert_eq!(self.len, self.validity.len());
-    }
-
     // fn freeze(self) -> StructVector {
     //     let frozen_fields: Vec<Vector> = self
     //         .fields
@@ -256,30 +227,31 @@ impl VectorMutOps for StructVectorMut {
     // }
 
     fn split_off(&mut self, at: usize) -> Self {
-        assert!(
-            at <= self.capacity(),
-            "split_off out of bounds: {} > {}",
-            at,
-            self.capacity()
-        );
-
-        let split_fields: Vec<VectorMut> = self
-            .fields
-            .iter_mut()
-            .map(|field| field.split_off(at))
-            .collect();
-
-        let split_validity = self.validity.split_off(at);
-        let split_len = self.len.saturating_sub(at);
-        self.len = at;
-
-        debug_assert_eq!(self.len, self.validity.len());
-
-        Self {
-            fields: split_fields.into_boxed_slice(),
-            len: split_len,
-            validity: split_validity,
-        }
+        todo!()
+        // assert!(
+        //     at <= self.capacity(),
+        //     "split_off out of bounds: {} > {}",
+        //     at,
+        //     self.capacity()
+        // );
+        //
+        // let split_fields: Vec<VectorMut> = self
+        //     .fields
+        //     .iter_mut()
+        //     .map(|field| field.split_off(at))
+        //     .collect();
+        //
+        // // let split_validity = self.validity.split_off(at);
+        // let split_len = self.len.saturating_sub(at);
+        // self.len = at;
+        //
+        // debug_assert_eq!(self.len, self.validity.len());
+        //
+        // Self {
+        //     fields: split_fields.into_boxed_slice(),
+        //     len: split_len,
+        //     // validity: split_validity,
+        // }
     }
 
     fn unsplit(&mut self, other: Self) {
@@ -306,9 +278,33 @@ impl VectorMutOps for StructVectorMut {
             )
         }
 
-        self.validity.unsplit(other.validity);
+        // self.validity.unsplit(other.validity);
         self.len += other.len;
         debug_assert_eq!(self.len, self.validity.len());
+    }
+
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        unsafe { &mut self.validity }
+    }
+
+    fn ensure_frozen(&mut self) {
+        todo!()
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        for field in &mut self.fields {
+            field.append_zeros(n);
+        }
+        self.validity.ensure_mut().append_n(false, n);
+        self.len += n;
+    }
+
+    fn append_zeros(&mut self, n: usize) {
+        for field in &mut self.fields {
+            field.append_zeros(n);
+        }
+        self.validity.ensure_mut().append_n(true, n);
+        self.len += n;
     }
 }
 
