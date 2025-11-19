@@ -3,11 +3,11 @@
 
 use vortex_dtype::DType;
 use vortex_dtype::Nullability::NonNullable;
-use vortex_error::{VortexExpect, VortexResult, vortex_bail};
+use vortex_error::{vortex_bail, VortexExpect, VortexResult};
 use vortex_mask::Mask;
 
-use crate::ArrayRef;
 use crate::execution::BindCtx;
+use crate::ArrayRef;
 
 pub enum MaskExecution {
     AllTrue(usize),
@@ -80,7 +80,8 @@ impl dyn BindCtx + '_ {
         let execution = self.bind(mask, None)?;
         Ok(MaskExecution::lazy(move || {
             let mask = execution.execute()?.into_bool();
-            Ok(Mask::from(mask.bits().clone()))
+            let (bits, _) = mask.into_frozen_parts();
+            Ok(Mask::from(bits))
         }))
     }
 }

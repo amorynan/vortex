@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use std::sync::Arc;
-
 use vortex_buffer::ByteBuffer;
 use vortex_compute::filter::Filter;
 use vortex_dtype::DType;
 use vortex_error::VortexResult;
-use vortex_vector::Vector;
 use vortex_vector::binaryview::{BinaryVector, BinaryViewTypeUpcast, StringVector};
+use vortex_vector::Vector;
 
-use crate::ArrayRef;
 use crate::arrays::{VarBinViewArray, VarBinViewVTable};
-use crate::execution::{BatchKernelRef, BindCtx, kernel};
+use crate::execution::{kernel, BatchKernelRef, BindCtx};
 use crate::vtable::{OperatorVTable, ValidityHelper};
+use crate::ArrayRef;
 
 impl OperatorVTable<VarBinViewVTable> for VarBinViewVTable {
     fn bind(
@@ -27,7 +25,6 @@ impl OperatorVTable<VarBinViewVTable> for VarBinViewVTable {
 
         let views = array.views().clone();
         let buffers: Vec<ByteBuffer> = array.buffers().iter().cloned().collect();
-        let buffers = Arc::new(buffers.into_boxed_slice());
 
         Ok(kernel(move || {
             let selection = mask.execute()?;
@@ -39,12 +36,12 @@ impl OperatorVTable<VarBinViewVTable> for VarBinViewVTable {
             match dtype {
                 // SAFETY: the incoming array has the same validation as the vector
                 DType::Utf8(_) => Ok(Vector::from_string(unsafe {
-                    StringVector::new_unchecked(views, buffers, validity)
+                    StringVector::new_unchecked(views.into(), validity.into(), buffers)
                 })),
 
                 // SAFETY: the incoming array has the same validation as the vector
                 DType::Binary(_) => Ok(Vector::from_binary(unsafe {
-                    BinaryVector::new_unchecked(views, buffers, validity)
+                    BinaryVector::new_unchecked(views.into(), validity.into(), buffers)
                 })),
                 _ => unreachable!("invalid dtype for VarBinViewArray {dtype}"),
             }
@@ -57,9 +54,9 @@ mod tests {
     use rstest::{fixture, rstest};
     use vortex_dtype::{DType, Nullability};
 
-    use crate::IntoArray;
     use crate::arrays::{BoolArray, VarBinViewArray};
     use crate::builders::{ArrayBuilder, VarBinViewBuilder};
+    use crate::IntoArray;
 
     #[fixture]
     fn strings() -> VarBinViewArray {

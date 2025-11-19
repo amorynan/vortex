@@ -112,8 +112,8 @@ impl StructVector {
     }
 
     /// Decomposes the struct vector into its constituent parts (fields, validity, and length).
-    pub fn into_parts(self) -> (Box<[Vector]>, Cow<Mask>, usize) {
-        (self.fields, self.validity, self.len)
+    pub fn into_frozen_parts(self) -> (Box<[Vector]>, Mask) {
+        (self.fields, self.validity.into_frozen())
     }
 
     /// Returns the fields of the `StructVectorMut`, each stored column-wise as a [`Vector`].

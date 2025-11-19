@@ -237,7 +237,7 @@ impl Pipeline {
     fn execute(&mut self, selection: &Mask) -> VortexResult<Vector> {
         // Start by allocating the output vector.
         let capacity = selection.true_count().next_multiple_of(N) + N;
-        let mut output = VectorMut::with_capacity(&self.dtype, capacity);
+        let mut output = Vector::with_capacity(&self.dtype, capacity);
 
         match selection {
             Mask::AllFalse(_) => {}
@@ -310,11 +310,12 @@ impl Pipeline {
                         } else {
                             // TODO(ngates): this is janky and forces us to filter validity also,
                             //  but we need the tail.len() == N in order to invoke filter.
-                            if tail.len() != N {
-                                tail.append_nulls(N - tail.len());
-                            }
-                            tail.filter(selection);
-                            assert_eq!(tail.len(), selection.true_count());
+                            todo!()
+                            // if tail.len() != N {
+                            //     tail.append_nulls(N - tail.len());
+                            // }
+                            // tail.filter(selection);
+                            // assert_eq!(tail.len(), selection.true_count());
                         }
                     }
 

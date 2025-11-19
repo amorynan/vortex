@@ -43,10 +43,10 @@ impl Kernel for InputKernel {
         if remaining < N && selection.true_count() < remaining {
             // TODO(ngates): this is slow. We should instead unsplit the vector, and then manually
             //  run a compaction over the vector.
-            let immutable = batch.freeze();
-            selection.iter_ones(|idx| {
-                out.extend_from_vector(&immutable.slice(idx..idx + 1));
-            });
+            // let immutable = batch.freeze();
+            // selection.iter_ones(|idx| {
+            //     out.extend_from_vector(&immutable.slice(idx..idx + 1));
+            // });
             return Ok(out);
         }
 
@@ -142,7 +142,7 @@ mod test {
             .into_primitive()
             .downcast::<u32>();
 
-        let (vector_elements, vector_validity) = vector.into_parts();
+        let (vector_elements, vector_validity) = vector.into_frozen_parts();
         let vector_validity = vector_validity.into_bit_buffer().into_inner();
 
         assert_eq!(vector_elements.as_ptr(), elements_ptr);

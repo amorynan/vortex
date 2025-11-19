@@ -59,7 +59,7 @@ where
     /// Extracts the frozen data.
     ///
     /// This will freeze the data if it was not yet frozen.
-    pub fn freeze(self) -> F {
+    pub fn into_frozen(self) -> F {
         match self {
             Cow::Frozen(frozen) => frozen,
             Cow::Mutable(mutable) => mutable.freeze(),

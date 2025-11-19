@@ -121,8 +121,20 @@ impl<D: NativeDecimalType> DVector<D> {
 
     /// Decomposes the decimal vector into its constituent parts ([`PrecisionScale`], decimal
     /// buffer, and validity).
-    pub fn into_parts(self) -> (PrecisionScale<D>, Cow<Buffer<D>>, Cow<Mask>) {
-        (self.ps, self.elements, self.validity)
+    pub fn into_frozen_parts(self) -> (PrecisionScale<D>, Buffer<D>, Mask) {
+        (
+            self.ps,
+            self.elements.into_frozen(),
+            self.validity.into_frozen(),
+        )
+    }
+
+    pub fn precision(&self) -> u8 {
+        self.ps.precision()
+    }
+
+    pub fn scale(&self) -> i8 {
+        self.ps.scale()
     }
 
     /// Get the precision/scale of the decimal vector.

@@ -8,7 +8,7 @@ use vortex_error::VortexResult;
 use vortex_vector::primitive::PVector;
 
 use crate::arrays::{MaskedVTable, PrimitiveArray, PrimitiveVTable};
-use crate::execution::{BatchKernelRef, BindCtx, kernel};
+use crate::execution::{kernel, BatchKernelRef, BindCtx};
 use crate::vtable::{OperatorVTable, ValidityHelper};
 use crate::{ArrayRef, IntoArray};
 
@@ -31,7 +31,7 @@ impl OperatorVTable<PrimitiveVTable> for PrimitiveVTable {
                 // the elements.
                 let elements = elements.filter(&mask);
 
-                Ok(PVector::<P>::try_new(elements, validity)?.into())
+                Ok(PVector::<P>::try_new(elements.into(), validity.into())?.into())
             }))
         })
     }

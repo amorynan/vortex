@@ -5,9 +5,9 @@
 
 use vortex_buffer::{BitBufferMut, Buffer, BufferMut};
 use vortex_dtype::{NativePType, Nullability};
-use vortex_error::{VortexResult, vortex_ensure, vortex_panic};
+use vortex_error::{vortex_ensure, vortex_panic, VortexResult};
 use vortex_vector::primitive::PrimitiveVector;
-use vortex_vector::{VectorOps, match_each_pvector};
+use vortex_vector::{match_each_pvector, VectorOps};
 
 use crate::arrays::PrimitiveArray;
 use crate::validity::Validity;
@@ -32,7 +32,7 @@ impl PrimitiveArray {
         );
 
         match_each_pvector!(primitive_vector, |v| {
-            let (buffer, mask) = v.into_parts();
+            let (buffer, mask) = v.into_frozen_parts();
             debug_assert_eq!(buffer.len(), mask.len());
 
             let validity = Validity::from_mask(mask, nullability);

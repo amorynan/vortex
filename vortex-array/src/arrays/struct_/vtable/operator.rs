@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use std::sync::Arc;
-
 use vortex_error::VortexResult;
-use vortex_vector::Vector;
 use vortex_vector::struct_::StructVector;
+use vortex_vector::Vector;
 
-use crate::ArrayRef;
 use crate::arrays::{StructArray, StructVTable};
-use crate::execution::{BatchKernelRef, BindCtx, kernel};
+use crate::execution::{kernel, BatchKernelRef, BindCtx};
 use crate::vtable::{OperatorVTable, ValidityHelper};
+use crate::ArrayRef;
 
 impl OperatorVTable<StructVTable> for StructVTable {
     fn bind(
@@ -34,7 +32,7 @@ impl OperatorVTable<StructVTable> for StructVTable {
                 .collect::<VortexResult<_>>()?;
             let validity_mask = validity.execute()?;
 
-            Ok(StructVector::try_new(Arc::new(fields.into_boxed_slice()), validity_mask)?.into())
+            Ok(StructVector::try_new(fields.into_boxed_slice(), validity_mask.into())?.into())
         }))
     }
 }
@@ -45,9 +43,9 @@ mod tests {
     use vortex_mask::Mask;
     use vortex_vector::VectorOps;
 
-    use crate::IntoArray;
     use crate::arrays::{BoolArray, PrimitiveArray, StructArray};
     use crate::validity::Validity;
+    use crate::IntoArray;
 
     #[test]
     fn test_struct_operator_basic() {

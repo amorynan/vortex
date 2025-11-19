@@ -58,6 +58,10 @@ impl BoolVector {
         }
     }
 
+    pub fn into_frozen_parts(self) -> (BitBuffer, Mask) {
+        (self.bits.into_frozen(), self.validity.into_frozen())
+    }
+
     /// Creates a new mutable boolean vector with the given `capacity`.
     pub fn with_capacity(capacity: usize) -> Self {
         Self {

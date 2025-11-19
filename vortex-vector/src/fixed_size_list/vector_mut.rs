@@ -148,8 +148,8 @@ impl FixedSizeListVector {
 
     /// Decomposes the `FixedSizeListVector` into its constituent parts (child elements, list size,
     /// and validity).
-    pub fn into_parts(self) -> (Box<Vector>, u32, Cow<Mask>) {
-        (self.elements, self.list_size, self.validity)
+    pub fn into_frozen_parts(self) -> (Box<Vector>, u32, Mask) {
+        (self.elements, self.list_size, self.validity.into_frozen())
     }
 
     /// Returns the child vector of elements, which represents the contiguous fixed-size lists of

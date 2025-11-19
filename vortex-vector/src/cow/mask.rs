@@ -77,6 +77,13 @@ impl Cow<Mask> {
         }
     }
 
+    pub fn all_true(&self) -> bool {
+        match self {
+            Cow::Frozen(frozen) => frozen.all_true(),
+            Cow::Mutable(mutable) => mutable.all_true(),
+        }
+    }
+
     pub fn slice(&self, range: impl RangeBounds<usize>) -> Self {
         match self {
             Cow::Frozen(frozen) => Cow::Frozen(frozen.slice(range)),

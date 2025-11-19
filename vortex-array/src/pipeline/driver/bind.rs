@@ -46,8 +46,7 @@ pub(crate) fn bind_kernels(
 
                 let batch = batch_inputs[batch_id]
                     .take()
-                    .vortex_expect("Batch input vector has already been consumed")
-                    .into_mut();
+                    .vortex_expect("Batch input vector has already been consumed");
 
                 Box::new(InputKernel::new(batch))
             }

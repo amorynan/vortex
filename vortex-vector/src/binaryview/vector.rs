@@ -118,6 +118,14 @@ impl<T: BinaryViewType> BinaryViewVector<T> {
         }
     }
 
+    pub fn into_frozen_parts(self) -> (Buffer<BinaryView>, Mask, Vec<ByteBuffer>) {
+        (
+            self.views.into_frozen(),
+            self.validity.into_frozen(),
+            self.buffers,
+        )
+    }
+
     /// Get a handle to the buffer holding the [views][BinaryView] of the vector.
     pub fn views(&self) -> &Cow<Buffer<BinaryView>> {
         &self.views

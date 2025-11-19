@@ -73,6 +73,10 @@ impl<T> PVector<T> {
         }
     }
 
+    pub fn into_frozen_parts(self) -> (Buffer<T>, Mask) {
+        (self.elements.into_frozen(), self.validity.into_frozen())
+    }
+
     /// Returns the internal [`Buffer`] of the [`PVector`].
     ///
     /// Note that the internal buffer may hold garbage data in place of nulls. That information is

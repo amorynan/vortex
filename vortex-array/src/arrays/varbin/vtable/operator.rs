@@ -2,22 +2,19 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use std::marker::PhantomData;
-use std::sync::Arc;
 
 use num_traits::ToPrimitive;
 use vortex_buffer::{Buffer, ByteBuffer};
-use vortex_dtype::{DType, IntegerPType, PTypeDowncastExt, match_each_integer_ptype};
-use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
+use vortex_dtype::{match_each_integer_ptype, DType, IntegerPType, PTypeDowncastExt};
+use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
 use vortex_mask::Mask;
+use vortex_vector::binaryview::{BinaryType, BinaryView, BinaryViewType, StringType};
 use vortex_vector::Vector;
-use vortex_vector::binaryview::{
-    BinaryType, BinaryView, BinaryViewType, BinaryViewVector, StringType,
-};
 
-use crate::ArrayRef;
 use crate::arrays::{VarBinArray, VarBinVTable};
 use crate::execution::{BatchKernel, BatchKernelRef, BindCtx, MaskExecution};
 use crate::vtable::{OperatorVTable, ValidityHelper};
+use crate::ArrayRef;
 
 impl OperatorVTable<VarBinVTable> for VarBinVTable {
     fn bind(
@@ -79,7 +76,7 @@ impl<V: BinaryViewType> BatchKernel for VarBinKernel<V> {
         match_each_integer_ptype!(offsets.ptype(), |T| {
             let pvec = offsets.downcast::<T>();
             // NOTE: discard the validity because offsets must be non-nullable
-            let (offsets, _) = pvec.into_parts();
+            let (offsets, _) = pvec.into_frozen_parts();
             let first = offsets[0];
 
             let lens: Buffer<u32> = offsets
@@ -112,15 +109,17 @@ impl<V: BinaryViewType> BatchKernel for VarBinKernel<V> {
                 "mismatched validity and views length"
             );
 
+            todo!()
+
             // SAFETY: views were constructed in the loop above to point at valid data from
             //  the buffer. Validity was checked immediately above to be of the appropriate length.
-            Ok(Vector::from(unsafe {
-                BinaryViewVector::<V>::new_unchecked(
-                    views,
-                    Arc::new(Box::new([self.bytes.clone()])),
-                    validity,
-                )
-            }))
+            // Ok(Vector::from(unsafe {
+            //     BinaryViewVector::<V>::new_unchecked(
+            //         views,
+            //         Arc::new(Box::new([self.bytes.clone()])),
+            //         validity,
+            //     )
+            // }))
         })
     }
 }
@@ -174,9 +173,9 @@ mod tests {
     use rstest::{fixture, rstest};
     use vortex_dtype::{DType, Nullability};
 
-    use crate::IntoArray;
     use crate::arrays::builder::VarBinBuilder;
     use crate::arrays::{BoolArray, VarBinArray};
+    use crate::IntoArray;
 
     #[fixture]
     fn strings() -> VarBinArray {

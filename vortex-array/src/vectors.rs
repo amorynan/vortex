@@ -2,11 +2,10 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use vortex_dtype::Nullability::NonNullable;
 use vortex_dtype::{
-    DType, NativeDecimalType, NativePType, match_each_decimal_value_type, match_each_native_ptype,
+    match_each_decimal_value_type, match_each_native_ptype, DType, NativeDecimalType, NativePType,
 };
 use vortex_error::VortexExpect;
 use vortex_vector::binaryview::{BinaryViewType, BinaryViewVector};
@@ -63,7 +62,7 @@ impl VectorIntoArray for BoolVector {
     fn into_array(self, dtype: DType) -> ArrayRef {
         assert!(matches!(dtype, DType::Bool(_)));
 
-        let (bits, validity) = self.into_parts();
+        let (bits, validity) = self.into_frozen_parts();
         BoolArray::from_bit_buffer(bits, Validity::from_mask(validity, dtype.nullability()))
             .into_array()
     }
@@ -82,7 +81,7 @@ impl<T: NativePType> VectorIntoArray for PVector<T> {
         assert!(matches!(dtype, DType::Primitive(_, _)));
         assert_eq!(T::PTYPE, dtype.as_ptype());
 
-        let (values, validity) = self.into_parts();
+        let (values, validity) = self.into_frozen_parts();
         // SAFETY: vectors maintain all invariants required for array creation
         unsafe {
             PrimitiveArray::new_unchecked::<T>(
@@ -113,7 +112,7 @@ impl<D: NativeDecimalType> VectorIntoArray for DVector<D> {
         assert_eq!(dec_dtype.precision(), self.precision());
         assert_eq!(dec_dtype.scale(), self.scale());
 
-        let (_ps, values, validity) = self.into_parts();
+        let (_ps, values, validity) = self.into_frozen_parts();
         // SAFETY: vectors maintain all invariants required for array creation
         unsafe {
             DecimalArray::new_unchecked::<D>(
@@ -130,10 +129,8 @@ impl<T: BinaryViewType> VectorIntoArray for BinaryViewVector<T> {
     fn into_array(self, dtype: DType) -> ArrayRef {
         assert!(matches!(dtype, DType::Utf8(_)));
 
-        let (views, buffers, validity) = self.into_parts();
+        let (views, validity, buffers) = self.into_frozen_parts();
         let validity = Validity::from_mask(validity, dtype.nullability());
-
-        let buffers = Arc::try_unwrap(buffers).unwrap_or_else(|b| (*b).clone());
 
         // SAFETY: vectors maintain all invariants required for array creation
         unsafe {
@@ -147,7 +144,7 @@ impl VectorIntoArray for ListViewVector {
     fn into_array(self, dtype: DType) -> ArrayRef {
         assert!(matches!(dtype, DType::List(_, _)));
 
-        let (elements, offsets, sizes, validity) = self.into_parts();
+        let (elements, offsets, sizes, validity) = self.into_frozen_parts();
         let validity = Validity::from_mask(validity, dtype.nullability());
 
         let elements_dtype = dtype
@@ -155,9 +152,7 @@ impl VectorIntoArray for ListViewVector {
             .vortex_expect("expected list")
             .deref()
             .clone();
-        let elements = Arc::try_unwrap(elements)
-            .unwrap_or_else(|e| (*e).clone())
-            .into_array(elements_dtype);
+        let elements = (*elements).into_array(elements_dtype);
 
         let offsets_dtype = DType::Primitive(offsets.ptype(), NonNullable);
         let offsets = offsets.into_array(offsets_dtype);
@@ -175,7 +170,7 @@ impl VectorIntoArray for FixedSizeListVector {
         assert!(matches!(dtype, DType::FixedSizeList(_, _, _)));
 
         let len = self.len();
-        let (elements, size, validity) = self.into_parts();
+        let (elements, size, validity) = self.into_frozen_parts();
         let validity = Validity::from_mask(validity, dtype.nullability());
 
         let elements_dtype = dtype
@@ -183,9 +178,7 @@ impl VectorIntoArray for FixedSizeListVector {
             .vortex_expect("expected fixed size list")
             .deref()
             .clone();
-        let elements = Arc::try_unwrap(elements)
-            .unwrap_or_else(|e| (*e).clone())
-            .into_array(elements_dtype);
+        let elements = elements.into_array(elements_dtype);
 
         // SAFETY: vectors maintain all invariants required for array creation
         unsafe { FixedSizeListArray::new_unchecked(elements, size, validity, len) }.into_array()
@@ -197,14 +190,13 @@ impl VectorIntoArray for StructVector {
         assert!(matches!(dtype, DType::Struct(_, _)));
 
         let len = self.len();
-        let (fields, validity) = self.into_parts();
+        let (fields, validity) = self.into_frozen_parts();
         let validity = Validity::from_mask(validity, dtype.nullability());
 
         let struct_fields = dtype.into_struct_fields();
         assert_eq!(fields.len(), struct_fields.nfields());
 
-        let field_arrays: Vec<ArrayRef> = Arc::try_unwrap(fields)
-            .unwrap_or_else(|f| (*f).clone())
+        let field_arrays: Vec<ArrayRef> = fields
             .into_iter()
             .zip(struct_fields.fields())
             .map(|(field_vector, field_dtype)| field_vector.into_array(field_dtype))
