@@ -52,55 +52,6 @@ macro_rules! match_each_vector {
     }};
 }
 
-/// Matches on all variants of [`VectorMut`] and executes the same code for each variant branch.
-///
-/// This macro eliminates repetitive match statements when implementing operations that need to work
-/// uniformly across all mutable vector type variants.
-///
-/// # Examples
-///
-/// ```
-/// use vortex_vector::Vector;
-/// use vortex_vector::bool::BoolVector;
-/// use vortex_vector::null::NullVector;
-/// use vortex_vector::{VectorOps, match_each_vector_mut};
-///
-/// fn reserve_space(vector: &mut Vector, additional: usize) {
-///     match_each_vector_mut!(vector, |v| { v.reserve(additional) })
-/// }
-///
-/// // Works with `Null` mutable vectors.
-/// let mut null_vec: Vector = NullVector::new(5).into();
-/// reserve_space(&mut null_vec, 10);
-/// assert!(null_vec.capacity() >= 15);
-///
-/// // Works with `Bool` mutable vectors.
-/// let mut bool_vec: Vector = BoolVector::from_iter([true, false].map(Some)).into();
-/// reserve_space(&mut bool_vec, 5);
-/// assert!(bool_vec.capacity() >= 7);
-/// ```
-///
-/// Note: The `reserve` method is already provided by the [`VectorMutOps`] trait implementation.
-///
-/// [`VectorMut`]: crate::Vector
-/// [`VectorMutOps`]: crate::VectorOps
-#[macro_export]
-macro_rules! match_each_vector_mut {
-    ($self:expr, | $vec:ident | $body:block) => {{
-        match $self {
-            $crate::Vector::Null($vec) => $body,
-            $crate::Vector::Bool($vec) => $body,
-            $crate::Vector::Decimal($vec) => $body,
-            $crate::Vector::Primitive($vec) => $body,
-            $crate::Vector::String($vec) => $body,
-            $crate::Vector::Binary($vec) => $body,
-            $crate::Vector::List($vec) => $body,
-            $crate::Vector::FixedSizeList($vec) => $body,
-            $crate::Vector::Struct($vec) => $body,
-        }
-    }};
-}
-
 /// Matches on pairs of vector variants and executes the same code for matching variant pairs.
 ///
 /// This macro eliminates repetitive match statements when implementing operations that need to work

@@ -18,7 +18,7 @@ use crate::listview::ListViewVector;
 use crate::null::NullVector;
 use crate::primitive::PrimitiveVector;
 use crate::struct_::StructVector;
-use crate::{match_each_vector_mut, match_vector_pair, Cow, VectorOps};
+use crate::{match_each_vector, match_vector_pair, Cow, VectorOps};
 
 /// An enum over all kinds of mutable vectors, which represent fully decompressed (canonical) array
 /// data.
@@ -87,27 +87,27 @@ impl Vector {
 
 impl VectorOps for Vector {
     fn len(&self) -> usize {
-        match_each_vector_mut!(self, |v| { v.len() })
+        match_each_vector!(self, |v| { v.len() })
     }
 
     fn validity(&self) -> &Cow<Mask> {
-        match_each_vector_mut!(self, |v| { v.validity() })
+        match_each_vector!(self, |v| { v.validity() })
     }
 
     unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
-        unsafe { match_each_vector_mut!(self, |v| { v.validity_mut() }) }
+        unsafe { match_each_vector!(self, |v| { v.validity_mut() }) }
     }
 
     fn clear(&mut self) {
-        match_each_vector_mut!(self, |v| { v.clear() })
+        match_each_vector!(self, |v| { v.clear() })
     }
 
     fn truncate(&mut self, len: usize) {
-        match_each_vector_mut!(self, |v| { v.truncate(len) })
+        match_each_vector!(self, |v| { v.truncate(len) })
     }
 
     fn split_off(&mut self, at: usize) -> Self {
-        match_each_vector_mut!(self, |v| { v.split_off(at).into() })
+        match_each_vector!(self, |v| { v.split_off(at).into() })
     }
 
     fn unsplit(&mut self, other: Self) {
@@ -115,15 +115,15 @@ impl VectorOps for Vector {
     }
 
     fn ensure_frozen(&mut self) {
-        match_each_vector_mut!(self, |v| { v.ensure_frozen() })
+        match_each_vector!(self, |v| { v.ensure_frozen() })
     }
 
     fn append_zeros(&mut self, n: usize) {
-        match_each_vector_mut!(self, |v| { v.append_zeros(n) })
+        match_each_vector!(self, |v| { v.append_zeros(n) })
     }
 
     fn append_nulls(&mut self, n: usize) {
-        match_each_vector_mut!(self, |v| { v.append_nulls(n) })
+        match_each_vector!(self, |v| { v.append_nulls(n) })
     }
 }
 

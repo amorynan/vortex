@@ -1,13 +1,41 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+use crate::filter::Filter;
 use vortex_buffer::{
-    BitBuffer, BitBufferMut, BitView, get_bit, get_bit_unchecked, set_bit_unchecked,
-    unset_bit_unchecked,
+    get_bit, get_bit_unchecked, set_bit_unchecked, unset_bit_unchecked, BitBuffer, BitBufferMut,
+    BitView,
 };
 use vortex_mask::Mask;
+use vortex_vector::Cow;
 
-use crate::filter::Filter;
+impl Filter<Mask> for &Cow<BitBuffer> {
+    type Output = BitBuffer;
+
+    fn filter(self, selection: &Mask) -> Self::Output {
+        match self {
+            Cow::Frozen(b) => b.filter(selection),
+            // TODO(ngates): here would be good to use the BitView to avoid cloning.
+            Cow::Mutable(b) => b.filter(selection),
+        }
+    }
+}
+
+impl Filter<Mask> for &mut Cow<BitBuffer> {
+    type Output = ();
+
+    fn filter(self, selection: &Mask) {
+        match self {
+            Cow::Frozen(b) => {
+                let filtered = b.filter(selection);
+                *self = Cow::Frozen(filtered);
+            }
+            Cow::Mutable(b) => {
+                b.filter(selection);
+            }
+        }
+    }
+}
 
 impl Filter<Mask> for &BitBuffer {
     type Output = BitBuffer;
@@ -29,6 +57,26 @@ impl Filter<Mask> for &BitBuffer {
     }
 }
 
+impl Filter<Mask> for &BitBufferMut {
+    type Output = BitBuffer;
+
+    fn filter(self, selection_mask: &Mask) -> BitBuffer {
+        assert_eq!(
+            selection_mask.len(),
+            self.len(),
+            "Selection mask length must equal the mask length"
+        );
+
+        match selection_mask {
+            Mask::AllTrue(_) => self.freeze(),
+            Mask::AllFalse(_) => BitBuffer::empty(),
+            Mask::Values(v) => {
+                filter_indices(self.inner().as_slice(), self.offset(), v.indices()).freeze()
+            }
+        }
+    }
+}
+
 impl Filter<Mask> for &mut BitBufferMut {
     type Output = ();
 
@@ -43,7 +91,7 @@ impl Filter<Mask> for &mut BitBufferMut {
             Mask::AllTrue(_) => {}
             Mask::AllFalse(_) => self.clear(),
             Mask::Values(v) => {
-                *self = filter_indices(self.inner().as_slice(), self.offset(), v.indices())
+                *self = filter_indices(self.inner().as_slice(), self.offset(), v.indices());
             }
         }
     }

@@ -7,6 +7,11 @@ use vortex_buffer::{BitBuffer, BitBufferMut};
 
 use crate::{Cow, IntoFrozen, IntoMut};
 
+// FIXME(ngates): it would be nice to have some view type that we can wrap up both BitBuffer
+//  and BitBufferMut references such that we can _read_ from a cow without conversion.
+//  Maybe generalize BitView, then have a more limited version for use within the pipeline?
+//  Maybe just use bitvec::BitSlice for now.
+
 impl IntoMut for BitBuffer {
     type Mutable = BitBufferMut;
 
