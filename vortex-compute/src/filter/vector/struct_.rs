@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use vortex_mask::{Mask, MaskMut};
-use vortex_vector::struct_::{StructVector, StructVectorMut};
+use vortex_vector::struct_::{StructVector, StructVector};
 use vortex_vector::{Vector, VectorMut, VectorOps};
 
 use crate::filter::Filter;
@@ -31,7 +31,7 @@ where
     }
 }
 
-impl<M> Filter<M> for &mut StructVectorMut
+impl<M> Filter<M> for &mut StructVector
 where
     for<'a> &'a mut VectorMut: Filter<M, Output = ()>,
     for<'a> &'a mut MaskMut: Filter<M, Output = ()>,

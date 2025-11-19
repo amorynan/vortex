@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Definition and implementation of [`NullVectorMut`].
+//! Definition and implementation of [`NullVector`].
 
 use vortex_mask::{Mask, MaskMut};
 
@@ -14,13 +14,13 @@ use crate::{Cow, VectorMutOps};
 ///
 /// The immutable equivalent of this type is [`NullVector`].
 #[derive(Debug, Clone)]
-pub struct NullVectorMut {
+pub struct NullVector {
     /// In theory, we only need to store a length, but in order to return `&Cow<Mask>` from the
     /// [`validity()`](Self::validity) method, we instead store nulls in a validity mask.
     pub(super) validity: Cow<Mask>,
 }
 
-impl NullVectorMut {
+impl NullVector {
     /// Creates a new mutable vector of nulls with the given length.
     pub fn new(len: usize) -> Self {
         Self {
@@ -29,7 +29,7 @@ impl NullVectorMut {
     }
 }
 
-impl VectorMutOps for NullVectorMut {
+impl VectorMutOps for NullVector {
     fn len(&self) -> usize {
         self.validity.len()
     }

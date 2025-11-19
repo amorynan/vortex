@@ -9,7 +9,7 @@ use vortex_scalar::{BinaryScalar, BoolScalar, DecimalScalar, PrimitiveScalar, Sc
 use vortex_vector::binaryview::{BinaryVector, StringVector};
 use vortex_vector::bool::BoolVector;
 use vortex_vector::decimal::{DVector, DecimalVector};
-use vortex_vector::null::NullVectorMut;
+use vortex_vector::null::NullVector;
 use vortex_vector::primitive::{PVector, PrimitiveVector};
 use vortex_vector::{VectorMut, VectorMutOps};
 
@@ -37,7 +37,7 @@ impl OperatorVTable<ConstantVTable> for ConstantVTable {
 
 fn to_vector(scalar: Scalar, len: usize) -> VectorMut {
     match scalar.dtype() {
-        DType::Null => NullVectorMut::new(len).into(),
+        DType::Null => NullVector::new(len).into(),
         DType::Bool(_) => to_vector_bool(scalar.as_bool(), len).into(),
         DType::Primitive(..) => to_vector_primitive(scalar.as_primitive(), len).into(),
         DType::Decimal(..) => to_vector_decimal(scalar.as_decimal(), len).into(),

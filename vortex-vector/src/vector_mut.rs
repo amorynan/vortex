@@ -15,9 +15,9 @@ use crate::bool::BoolVector;
 use crate::decimal::DecimalVector;
 use crate::fixed_size_list::FixedSizeListVectorMut;
 use crate::listview::ListViewVectorMut;
-use crate::null::NullVectorMut;
+use crate::null::NullVector;
 use crate::primitive::PrimitiveVector;
-use crate::struct_::StructVectorMut;
+use crate::struct_::StructVector;
 use crate::{match_each_vector_mut, match_vector_pair, Cow, VectorMutOps};
 
 /// An enum over all kinds of mutable vectors, which represent fully decompressed (canonical) array
@@ -32,7 +32,7 @@ use crate::{match_each_vector_mut, match_vector_pair, Cow, VectorMutOps};
 #[derive(Debug)]
 pub enum VectorMut {
     /// Mutable Null vectors.
-    Null(NullVectorMut),
+    Null(NullVector),
     /// Mutable Boolean vectors.
     Bool(BoolVector),
     /// Mutable Decimal vectors.
@@ -58,21 +58,21 @@ pub enum VectorMut {
     /// Mutable vectors of Lists with fixed sizes.
     FixedSizeList(FixedSizeListVectorMut),
     /// Mutable vectors of Struct elements.
-    Struct(StructVectorMut),
+    Struct(StructVector),
 }
 
 impl VectorMut {
     /// Create a new mutable vector with the given capacity and dtype.
     pub fn with_capacity(dtype: &DType, capacity: usize) -> Self {
         match dtype {
-            DType::Null => NullVectorMut::new(0).into(),
+            DType::Null => NullVector::new(0).into(),
             DType::Bool(_) => BoolVector::with_capacity(capacity).into(),
             DType::Primitive(ptype, _) => PrimitiveVector::with_capacity(*ptype, capacity).into(),
             DType::FixedSizeList(elem_dtype, list_size, _) => {
                 FixedSizeListVectorMut::with_capacity(elem_dtype, *list_size, capacity).into()
             }
             DType::Struct(struct_fields, _) => {
-                StructVectorMut::with_capacity(struct_fields, capacity).into()
+                StructVector::with_capacity(struct_fields, capacity).into()
             }
             DType::Decimal(decimal_dtype, _) => {
                 DecimalVector::with_capacity(decimal_dtype, capacity).into()
@@ -128,8 +128,8 @@ impl VectorMutOps for VectorMut {
 }
 
 impl VectorMut {
-    /// Returns a reference to the inner [`NullVectorMut`] if `self` is of that variant.
-    pub fn as_null_mut(&mut self) -> &mut NullVectorMut {
+    /// Returns a reference to the inner [`NullVector`] if `self` is of that variant.
+    pub fn as_null_mut(&mut self) -> &mut NullVector {
         if let VectorMut::Null(v) = self {
             return v;
         }
@@ -184,16 +184,16 @@ impl VectorMut {
         vortex_panic!("Expected FixedSizeListVectorMut, got {self:?}");
     }
 
-    /// Returns a reference to the inner [`StructVectorMut`] if `self` is of that variant.
-    pub fn as_struct_mut(&mut self) -> &mut StructVectorMut {
+    /// Returns a reference to the inner [`StructVector`] if `self` is of that variant.
+    pub fn as_struct_mut(&mut self) -> &mut StructVector {
         if let VectorMut::Struct(v) = self {
             return v;
         }
         vortex_panic!("Expected StructVectorMut, got {self:?}");
     }
 
-    /// Consumes `self` and returns the inner [`NullVectorMut`] if `self` is of that variant.
-    pub fn into_null(self) -> NullVectorMut {
+    /// Consumes `self` and returns the inner [`NullVector`] if `self` is of that variant.
+    pub fn into_null(self) -> NullVector {
         if let VectorMut::Null(v) = self {
             return v;
         }
@@ -251,8 +251,8 @@ impl VectorMut {
         vortex_panic!("Expected FixedSizeListVectorMut, got {self:?}");
     }
 
-    /// Consumes `self` and returns the inner [`StructVectorMut`] if `self` is of that variant.
-    pub fn into_struct(self) -> StructVectorMut {
+    /// Consumes `self` and returns the inner [`StructVector`] if `self` is of that variant.
+    pub fn into_struct(self) -> StructVector {
         if let VectorMut::Struct(v) = self {
             return v;
         }

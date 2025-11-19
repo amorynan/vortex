@@ -3,46 +3,35 @@
 
 //! Definition and implementation of [`StructVector`].
 
-use std::fmt::Debug;
-use std::ops::RangeBounds;
-use std::sync::Arc;
+// use std::sync::Arc;
 
-use vortex_error::{VortexExpect, VortexResult, vortex_ensure};
-use vortex_mask::Mask;
+use vortex_dtype::StructFields;
+use vortex_error::{vortex_ensure, VortexExpect, VortexResult};
+use vortex_mask::{Mask, MaskMut};
 
-use crate::struct_::{StructScalar, StructVectorMut};
-use crate::{Scalar, Vector, VectorMutOps, VectorOps};
+use crate::{match_vector_pair, Cow, VectorMut, VectorMutOps};
 
-/// An immutable vector of struct values.
+/// A mutable vector of struct values (values with named fields).
 ///
 /// Struct values are stored column-wise in the vector, so values in the same field are stored next
 /// to each other (rather than values in the same struct stored next to each other).
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StructVector {
-    /// The fields of the `StructVector`, each stored column-wise as a [`Vector`].
-    ///
-    /// We store these as an [`Arc<Box<_>>`] because we need to call [`try_unwrap()`] in our
-    /// [`try_into_mut()`] implementation, and since slices are unsized it is not implemented for
-    /// [`Arc<[Vector]>`].
-    ///
-    /// [`try_unwrap()`]: Arc::try_unwrap
-    /// [`try_into_mut()`]: Self::try_into_mut
-    pub(super) fields: Arc<Box<[Vector]>>,
+    /// The (owned) fields of the `StructVectorMut`, each stored column-wise as a [`VectorMut`].
+    pub(super) fields: Box<[VectorMut]>,
 
     /// The validity mask (where `true` represents an element is **not** null).
-    pub(super) validity: Mask,
+    pub(super) validity: Cow<Mask>,
 
     /// The length of the vector (which is the same as all field vectors).
     ///
-    /// This is stored here as a convenience, as the validity also tracks this information.
+    /// This is stored here as a convenience, and also helps in the case that the `StructVector` has
+    /// no fields.
     pub(super) len: usize,
 }
 
 impl StructVector {
-    /// Creates a new [`StructVector`] from the given fields and validity mask.
-    ///
-    /// Note that we take [`Arc<Box<[_]>>`] in order to enable easier conversion to
-    /// [`StructVectorMut`] via [`try_into_mut()`](Self::try_into_mut).
+    /// Creates a new [`StructVector`] with the given fields and validity mask.
     ///
     /// # Panics
     ///
@@ -50,14 +39,11 @@ impl StructVector {
     ///
     /// - Any field vector has a length that does not match the length of other fields.
     /// - The validity mask length does not match the field length.
-    pub fn new(fields: Arc<Box<[Vector]>>, validity: Mask) -> Self {
-        Self::try_new(fields, validity).vortex_expect("Failed to create `StructVector`")
+    pub fn new(fields: Box<[VectorMut]>, validity: Cow<Mask>) -> Self {
+        Self::try_new(fields, validity).vortex_expect("Failed to create `StructVectorMut`")
     }
 
-    /// Tries to create a new [`StructVector`] from the given fields and validity mask.
-    ///
-    /// Note that we take [`Arc<Box<[_]>>`] in order to enable easier conversion to
-    /// [`StructVectorMut`] via [`try_into_mut()`](Self::try_into_mut).
+    /// Tries to create a new [`StructVector`] with the given fields and validity mask.
     ///
     /// # Errors
     ///
@@ -65,7 +51,7 @@ impl StructVector {
     ///
     /// - Any field vector has a length that does not match the length of other fields.
     /// - The validity mask length does not match the field length.
-    pub fn try_new(fields: Arc<Box<[Vector]>>, validity: Mask) -> VortexResult<Self> {
+    pub fn try_new(fields: Box<[VectorMut]>, validity: Cow<Mask>) -> VortexResult<Self> {
         let len = validity.len();
 
         // Validate that all fields have the correct length.
@@ -86,10 +72,8 @@ impl StructVector {
         })
     }
 
-    /// Creates a new [`StructVector`] from the given fields and validity mask without validation.
-    ///
-    /// Note that we take [`Arc<Box<[_]>>`] in order to enable easier conversion to
-    /// [`StructVectorMut`] via [`try_into_mut()`](Self::try_into_mut).
+    /// Creates a new [`StructVector`] with the given fields and validity mask without
+    /// validation.
     ///
     /// # Safety
     ///
@@ -97,7 +81,7 @@ impl StructVector {
     ///
     /// - All field vectors have the same length.
     /// - The validity mask has a length equal to the field length.
-    pub unsafe fn new_unchecked(fields: Arc<Box<[Vector]>>, validity: Mask) -> Self {
+    pub unsafe fn new_unchecked(fields: Box<[VectorMut]>, validity: Cow<Mask>) -> Self {
         let len = validity.len();
 
         if cfg!(debug_assertions) {
@@ -111,111 +95,221 @@ impl StructVector {
         }
     }
 
-    /// Decomposes the struct vector into its constituent parts (fields and validity).
-    pub fn into_parts(self) -> (Arc<Box<[Vector]>>, Mask) {
-        (self.fields, self.validity)
+    /// Creates a new [`StructVector`] with the given fields and capacity.
+    pub fn with_capacity(struct_fields: &StructFields, capacity: usize) -> Self {
+        let fields: Vec<VectorMut> = struct_fields
+            .fields()
+            .map(|dtype| VectorMut::with_capacity(&dtype, capacity))
+            .collect();
+
+        let validity = Cow::Mutable(MaskMut::with_capacity(capacity));
+
+        Self {
+            fields: fields.into_boxed_slice(),
+            validity,
+            len: 0,
+        }
     }
 
-    /// Returns the fields of the `StructVector`, each stored column-wise as a [`Vector`].
-    pub fn fields(&self) -> &Arc<Box<[Vector]>> {
-        &self.fields
+    /// Decomposes the struct vector into its constituent parts (fields, validity, and length).
+    pub fn into_parts(self) -> (Box<[VectorMut]>, Cow<Mask>, usize) {
+        (self.fields, self.validity, self.len)
+    }
+
+    /// Returns the fields of the `StructVectorMut`, each stored column-wise as a [`VectorMut`].
+    pub fn fields(&self) -> &[VectorMut] {
+        self.fields.as_ref()
+    }
+
+    /// Returns a mutable handle to the field vectors.
+    ///
+    /// # Safety
+    ///
+    /// Callers must ensure that any modifications to the field vectors do not violate
+    /// the invariants of this type, namely that all field vectors are of the same length
+    /// and equal to the length of the validity.
+    pub unsafe fn fields_mut(&mut self) -> &mut [VectorMut] {
+        self.fields.as_mut()
+    }
+
+    /// Returns a mutable handle to the validity mask of the vector.
+    ///
+    /// # Safety
+    ///
+    /// Callers must ensure that if the length of the mask is modified, the lengths
+    /// of all of the field vectors should be updated accordingly to continue meeting
+    /// the invariants of the type.
+    pub unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        &mut self.validity
+    }
+
+    /// Finds the minimum capacity of all field vectors.
+    ///
+    /// This is equal to the maximum amount of scalars we can add before we need to reallocate at
+    /// least one of the child field vectors.
+    ///
+    /// If there are no fields, this returns the length of the vector.
+    ///
+    /// Note that this takes time in `O(f)`, where `f` is the number of fields.
+    pub fn minimum_capacity(&self) -> usize {
+        // self.fields
+        //     .iter()
+        //     .map(|field| field.capacity())
+        //     .min()
+        //     .unwrap_or(self.len)
+        todo!()
     }
 }
 
-impl VectorOps for StructVector {
-    type Mutable = StructVectorMut;
-
+impl VectorMutOps for StructVector {
     fn len(&self) -> usize {
         self.len
     }
 
-    fn validity(&self) -> &Mask {
+    fn validity(&self) -> &Cow<Mask> {
         &self.validity
     }
 
-    fn scalar_at(&self, index: usize) -> Scalar {
-        assert!(index < self.len());
-        StructScalar::new(self.slice(index..index + 1)).into()
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        unsafe { &mut self.validity }
     }
 
-    fn slice(&self, _range: impl RangeBounds<usize> + Clone + Debug) -> Self {
-        todo!()
+    fn clear(&mut self) {
+        for field in &mut self.fields {
+            field.clear();
+        }
+        self.validity.clear();
+        self.len = 0;
     }
 
-    fn try_into_mut(self) -> Result<StructVectorMut, Self> {
-        let len = self.len;
-
-        let fields = match Arc::try_unwrap(self.fields) {
-            Ok(fields) => fields,
-            Err(fields) => return Err(Self { fields, ..self }),
-        };
-
-        let validity = match self.validity.try_into_mut() {
-            Ok(validity) => validity,
-            Err(validity) => {
-                return Err(Self {
-                    fields: Arc::new(fields),
-                    validity,
-                    len,
-                });
-            }
-        };
-
-        // Convert all the remaining fields to mutable, if possible.
-        let mut mutable_fields = Vec::with_capacity(fields.len());
-        let mut fields_iter = fields.into_iter();
-
-        while let Some(field) = fields_iter.next() {
-            match field.try_into_mut() {
-                Ok(mutable_field) => {
-                    // We were able to take ownership of the field vector, so add it and keep going.
-                    mutable_fields.push(mutable_field);
-                }
-                Err(immutable_field) => {
-                    // We were unable to take ownership, so we must re-freeze all of the fields
-                    // vectors we took ownership over and reconstruct the original `StructVector`.
-                    let mut all_fields: Vec<Vector> = mutable_fields
-                        .into_iter()
-                        .map(|mut_field| mut_field.freeze())
-                        .collect();
-
-                    all_fields.push(immutable_field);
-                    all_fields.extend(fields_iter);
-
-                    return Err(Self {
-                        fields: Arc::new(all_fields.into_boxed_slice()),
-                        len: self.len,
-                        validity: validity.freeze(),
-                    });
-                }
-            }
+    fn truncate(&mut self, len: usize) {
+        for field in &mut self.fields {
+            field.truncate(len);
         }
 
-        Ok(StructVectorMut {
-            fields: mutable_fields.into_boxed_slice(),
-            len: self.len,
-            validity,
-        })
+        // self.validity.truncate(len);
+        self.len = self.validity.len();
     }
 
-    fn into_mut(self) -> StructVectorMut {
-        let len = self.len;
-        let validity = self.validity.into_mut();
+    fn append_zeros(&mut self, n: usize) {
+        for field in &mut self.fields {
+            field.append_zeros(n);
+        }
+        self.validity.ensure_mut().append_n(true, n);
+        self.len += n;
+    }
 
-        // If someone else has a strong reference to the `Arc`, clone the underlying data (which is
-        // just a **different** reference count increment).
-        let fields = Arc::try_unwrap(self.fields).unwrap_or_else(|arc| (*arc).clone());
+    fn append_nulls(&mut self, n: usize) {
+        for field in &mut self.fields {
+            field.append_zeros(n);
+        }
+        self.validity.ensure_mut().append_n(false, n);
+        self.len += n;
+    }
 
-        let mutable_fields: Box<[_]> = fields
-            .into_vec()
-            .into_iter()
-            .map(|field| field.into_mut())
+    fn ensure_frozen(&mut self) {
+        for field in &mut self.fields {
+            field.ensure_frozen();
+        }
+        self.validity.ensure_frozen();
+    }
+
+    fn split_off(&mut self, at: usize) -> Self {
+        let split_fields: Vec<VectorMut> = self
+            .fields
+            .iter_mut()
+            .map(|field| field.split_off(at))
             .collect();
 
-        StructVectorMut {
-            fields: mutable_fields,
-            len,
-            validity,
+        let tail_validity = self.validity.ensure_mut().split_off(at);
+        let tail_len = self.len.saturating_sub(at);
+        self.len = self.len.min(at);
+        debug_assert_eq!(self.len, self.validity.len());
+
+        Self {
+            fields: split_fields.into_boxed_slice(),
+            len: tail_len,
+            validity: Cow::Mutable(tail_validity),
         }
+    }
+
+    fn unsplit(&mut self, other: Self) {
+        assert_eq!(
+            self.fields.len(),
+            other.fields.len(),
+            "Cannot unsplit StructVectorMut: field count mismatch ({} vs {})",
+            self.fields.len(),
+            other.fields.len()
+        );
+
+        if self.is_empty() {
+            *self = other;
+            return;
+        }
+
+        // Unsplit each field vector.
+        let pairs = self.fields.iter_mut().zip(other.fields);
+        for (self_mut_vector, other_mut_vec) in pairs {
+            match_vector_pair!(
+                self_mut_vector,
+                other_mut_vec,
+                |a: VectorMut, b: VectorMut| a.unsplit(b)
+            )
+        }
+
+        // self.validity.unsplit(other.validity);
+        self.len += other.len;
+        debug_assert_eq!(self.len, self.validity.len());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use vortex_mask::Mask;
+
+    use super::*;
+    use crate::bool::BoolVector;
+    use crate::null::NullVector;
+    use crate::primitive::PVector;
+    use crate::VectorMut;
+
+    #[test]
+    fn test_empty_fields() {
+        let mut struct_vec =
+            StructVector::try_new(Box::new([]), Mask::new_true(10).into()).unwrap();
+        let second_half = struct_vec.split_off(6);
+        assert_eq!(struct_vec.len(), 6);
+        assert_eq!(second_half.len(), 4);
+    }
+
+    #[test]
+    fn test_nested_struct() {
+        let inner1 = StructVector::try_new(
+            Box::new([
+                NullVector::new(4).into(),
+                BoolVector::from_iter([true, false, true, false]).into(),
+            ]),
+            Mask::new_true(4).into(),
+        )
+        .unwrap()
+        .into();
+
+        let inner2 = StructVector::try_new(
+            Box::new([PVector::<u32>::from_iter([100, 200, 300, 400]).into()]),
+            Mask::new_true(4).into(),
+        )
+        .unwrap()
+        .into();
+
+        let mut outer =
+            StructVector::try_new(Box::new([inner1, inner2]), Mask::new_true(4).into()).unwrap();
+
+        let second = outer.split_off(2);
+        assert_eq!(outer.len(), 2);
+        assert_eq!(second.len(), 2);
+
+        outer.unsplit(second);
+        assert_eq!(outer.len(), 4);
+        assert!(matches!(outer.fields[0], VectorMut::Struct(_)));
     }
 }

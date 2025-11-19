@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use vortex_mask::Mask;
-use vortex_vector::null::{NullVector, NullVectorMut};
+use vortex_vector::null::{NullVector, NullVector};
 
 use crate::filter::{Filter, MaskIndices};
 
@@ -22,19 +22,19 @@ impl Filter<MaskIndices<'_>> for &NullVector {
     }
 }
 
-impl Filter<Mask> for &mut NullVectorMut {
+impl Filter<Mask> for &mut NullVector {
     type Output = ();
 
     fn filter(self, selection: &Mask) -> Self::Output {
-        *self = NullVectorMut::new(selection.true_count())
+        *self = NullVector::new(selection.true_count())
     }
 }
 
-impl Filter<MaskIndices<'_>> for &mut NullVectorMut {
+impl Filter<MaskIndices<'_>> for &mut NullVector {
     type Output = ();
 
     fn filter(self, indices: &MaskIndices) -> Self::Output {
-        *self = NullVectorMut::new(indices.len())
+        *self = NullVector::new(indices.len())
     }
 }
 
@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_filter_null_vector_mut_with_mask() {
-        let mut vec = NullVectorMut::new(5);
+        let mut vec = NullVector::new(5);
         let mask = Mask::from_iter([true, false, true, false, true]);
 
         vec.filter(&mask);
@@ -103,7 +103,7 @@ mod tests {
 
     #[test]
     fn test_filter_null_vector_mut_with_mask_indices() {
-        let mut vec = NullVectorMut::new(5);
+        let mut vec = NullVector::new(5);
         let indices = unsafe { MaskIndices::new_unchecked(&[0, 2, 4]) };
 
         vec.filter(&indices);
@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_filter_null_vector_mut_all_true() {
-        let mut vec = NullVectorMut::new(3);
+        let mut vec = NullVector::new(3);
         let mask = Mask::new_true(3);
 
         vec.filter(&mask);
@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_filter_null_vector_mut_all_false() {
-        let mut vec = NullVectorMut::new(3);
+        let mut vec = NullVector::new(3);
         let mask = Mask::new_false(3);
 
         vec.filter(&mask);

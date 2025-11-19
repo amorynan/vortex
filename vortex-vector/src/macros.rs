@@ -65,7 +65,7 @@ macro_rules! match_each_vector {
 /// ```
 /// use vortex_vector::VectorMut;
 /// use vortex_vector::bool::BoolVector;
-/// use vortex_vector::null::NullVectorMut;
+/// use vortex_vector::null::NullVector;
 /// use vortex_vector::{VectorMutOps, match_each_vector_mut};
 ///
 /// fn reserve_space(vector: &mut VectorMut, additional: usize) {
@@ -73,7 +73,7 @@ macro_rules! match_each_vector {
 /// }
 ///
 /// // Works with `Null` mutable vectors.
-/// let mut null_vec: VectorMut = NullVectorMut::new(5).into();
+/// let mut null_vec: VectorMut = NullVector::new(5).into();
 /// reserve_space(&mut null_vec, 10);
 /// assert!(null_vec.capacity() >= 15);
 ///
