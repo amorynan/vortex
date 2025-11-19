@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use vortex_dtype::i256;
-use vortex_vector::decimal::{DVector, DVectorMut, DecimalVector, DecimalVectorMut};
-use vortex_vector::{match_each_dvector, match_each_dvector_mut};
+use vortex_vector::decimal::{DVector, DecimalVector};
+use vortex_vector::match_each_dvector;
 
-use crate::filter::Filter;
+use crate::filter::{Filter, FilterMask};
 
-impl<M> Filter<M> for &DecimalVector
+impl<M: FilterMask> Filter<M> for &DecimalVector
 where
     for<'a> &'a DVector<i8>: Filter<M, Output = DVector<i8>>,
     for<'a> &'a DVector<i16>: Filter<M, Output = DVector<i16>>,
@@ -19,22 +19,22 @@ where
     type Output = DecimalVector;
 
     fn filter(self, selection: &M) -> Self::Output {
-        match_each_dvector!(self, |d| { d.filter(selection).into() })
+        match_each_dvector!(self, |d| { Filter::<M>::filter(d, selection).into() })
     }
 }
 
-impl<M> Filter<M> for &mut DecimalVectorMut
+impl<M: FilterMask> Filter<M> for &mut DecimalVector
 where
-    for<'a> &'a mut DVectorMut<i8>: Filter<M, Output = ()>,
-    for<'a> &'a mut DVectorMut<i16>: Filter<M, Output = ()>,
-    for<'a> &'a mut DVectorMut<i32>: Filter<M, Output = ()>,
-    for<'a> &'a mut DVectorMut<i64>: Filter<M, Output = ()>,
-    for<'a> &'a mut DVectorMut<i128>: Filter<M, Output = ()>,
-    for<'a> &'a mut DVectorMut<i256>: Filter<M, Output = ()>,
+    for<'a> &'a mut DVector<i8>: Filter<M, Output = ()>,
+    for<'a> &'a mut DVector<i16>: Filter<M, Output = ()>,
+    for<'a> &'a mut DVector<i32>: Filter<M, Output = ()>,
+    for<'a> &'a mut DVector<i64>: Filter<M, Output = ()>,
+    for<'a> &'a mut DVector<i128>: Filter<M, Output = ()>,
+    for<'a> &'a mut DVector<i256>: Filter<M, Output = ()>,
 {
     type Output = ();
 
     fn filter(self, selection: &M) -> Self::Output {
-        match_each_dvector_mut!(self, |d| { d.filter(selection) });
+        match_each_dvector!(self, |d| { Filter::<M>::filter(d, selection) });
     }
 }

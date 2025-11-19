@@ -28,7 +28,7 @@ use crate::{Cow, Vector, VectorOps};
 /// - The `elements` vector has length `n * list_size`
 /// - The `validity` mask has length `n`
 /// - Each list `i` occupies `elements[i * list_size..(i+1) * list_size]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FixedSizeListVector {
     /// The mutable child vector of elements.
     pub(super) elements: Box<Vector>,

@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use vortex_dtype::half::f16;
-use vortex_vector::primitive::{PVector, PVectorMut, PrimitiveVector, PrimitiveVectorMut};
-use vortex_vector::{match_each_pvector, match_each_pvector_mut};
+use vortex_vector::match_each_pvector;
+use vortex_vector::primitive::{PVector, PrimitiveVector};
 
-use crate::filter::Filter;
+use crate::filter::{Filter, FilterMask};
 
-impl<M> Filter<M> for &PrimitiveVector
+impl<M: FilterMask> Filter<M> for &PrimitiveVector
 where
     for<'a> &'a PVector<i8>: Filter<M, Output = PVector<i8>>,
     for<'a> &'a PVector<i16>: Filter<M, Output = PVector<i16>>,
@@ -24,27 +24,27 @@ where
     type Output = PrimitiveVector;
 
     fn filter(self, selection: &M) -> Self::Output {
-        match_each_pvector!(self, |v| { v.filter(selection).into() })
+        match_each_pvector!(self, |v| { Filter::<M>::filter(v, selection).into() })
     }
 }
 
-impl<M> Filter<M> for &mut PrimitiveVectorMut
+impl<M: FilterMask> Filter<M> for &mut PrimitiveVector
 where
-    for<'a> &'a mut PVectorMut<i8>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVectorMut<i16>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVectorMut<i32>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVectorMut<i64>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVectorMut<u8>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVectorMut<u16>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVectorMut<u32>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVectorMut<u64>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVectorMut<f16>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVectorMut<f32>: Filter<M, Output = ()>,
-    for<'a> &'a mut PVectorMut<f64>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<i8>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<i16>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<i32>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<i64>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<u8>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<u16>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<u32>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<u64>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<f16>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<f32>: Filter<M, Output = ()>,
+    for<'a> &'a mut PVector<f64>: Filter<M, Output = ()>,
 {
     type Output = ();
 
     fn filter(self, selection: &M) -> Self::Output {
-        match_each_pvector_mut!(self, |v| { v.filter(selection) })
+        match_each_pvector!(self, |v| { Filter::<M>::filter(v, selection) })
     }
 }

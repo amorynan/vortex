@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use vortex_buffer::{Buffer, BufferMut};
-use vortex_mask::{Mask, MaskMut};
-use vortex_vector::VectorOps;
-use vortex_vector::binaryview::{
-    BinaryView, BinaryViewType, BinaryViewVector, BinaryViewVectorMut,
-};
+use vortex_buffer::Buffer;
+use vortex_mask::Mask;
+use vortex_vector::binaryview::{BinaryView, BinaryViewType, BinaryViewVector};
+use vortex_vector::{Cow, VectorOps};
 
-use crate::filter::Filter;
+use crate::filter::{Filter, FilterMask};
 
-impl<M, T: BinaryViewType> Filter<M> for &BinaryViewVector<T>
+impl<M: FilterMask, T: BinaryViewType> Filter<M> for &BinaryViewVector<T>
 where
-    for<'a> &'a Mask: Filter<M, Output = Mask>,
-    for<'a> &'a Buffer<BinaryView>: Filter<M, Output = Buffer<BinaryView>>,
+    for<'a> &'a Cow<Mask>: Filter<M, Output = Mask>,
+    for<'a> &'a Cow<Buffer<BinaryView>>: Filter<M, Output = Buffer<BinaryView>>,
 {
     type Output = BinaryViewVector<T>;
 
@@ -22,14 +20,20 @@ where
         let validity = self.validity().filter(selection);
 
         // SAFETY: we filter the views and validity using the same mask
-        unsafe { BinaryViewVector::<T>::new_unchecked(views, self.buffers().clone(), validity) }
+        unsafe {
+            BinaryViewVector::<T>::new_unchecked(
+                views.into(),
+                validity.into(),
+                self.buffers().to_vec(),
+            )
+        }
     }
 }
 
-impl<M, T: BinaryViewType> Filter<M> for &mut BinaryViewVectorMut<T>
+impl<M: FilterMask, T: BinaryViewType> Filter<M> for &mut BinaryViewVector<T>
 where
-    for<'a> &'a mut MaskMut: Filter<M, Output = ()>,
-    for<'a> &'a mut BufferMut<BinaryView>: Filter<M, Output = ()>,
+    for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,
+    for<'a> &'a mut Cow<Buffer<BinaryView>>: Filter<M, Output = ()>,
 {
     type Output = ();
 

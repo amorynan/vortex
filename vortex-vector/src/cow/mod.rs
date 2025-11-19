@@ -16,6 +16,8 @@ pub trait IntoMut: Clone {
 
     /// Converts an immutable value into its mutable counterpart, usually via cloning.
     fn into_mut(self) -> Self::Mutable;
+
+    fn try_into_mut(self) -> Result<Self::Mutable, Self>;
 }
 
 /// A trait defining a mutable type that can be converted into an immutable / frozen counterpart.
@@ -137,6 +139,29 @@ where
                 }
             }
             Cow::Mutable(mutable) => mutable,
+        }
+    }
+
+    /// Attempt to convert into mutable without cloning.
+    pub fn try_mut(&mut self) -> Result<&mut <F as IntoMut>::Mutable, &F> {
+        match self {
+            Cow::Frozen(frozen) => match mem::take(frozen).try_into_mut() {
+                Ok(mutable) => {
+                    *self = Cow::Mutable(mutable);
+                    match self {
+                        Cow::Mutable(mutable) => Ok(mutable),
+                        _ => unsafe { std::hint::unreachable_unchecked() },
+                    }
+                }
+                Err(frozen) => {
+                    *self = Cow::Frozen(frozen);
+                    match self {
+                        Cow::Frozen(frozen) => Err(frozen),
+                        _ => unsafe { std::hint::unreachable_unchecked() },
+                    }
+                }
+            },
+            Cow::Mutable(mutable) => Ok(mutable),
         }
     }
 }

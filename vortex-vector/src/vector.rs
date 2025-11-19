@@ -29,7 +29,7 @@ use crate::{match_each_vector, match_vector_pair, Cow, VectorOps};
 ///
 /// The immutable equivalent of this type is [`Vector`], which implements the
 /// [`VectorOps`](crate::VectorOps) trait.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Vector {
     /// Mutable Null vectors.
     Null(NullVector),

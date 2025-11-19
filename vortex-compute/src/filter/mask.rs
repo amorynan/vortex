@@ -1,39 +1,54 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use vortex_buffer::BitView;
+use crate::filter::{Filter, FilterMask};
+use vortex_buffer::{BitBuffer, BitBufferMut};
 use vortex_error::VortexExpect;
 use vortex_mask::{Mask, MaskMut};
+use vortex_vector::Cow;
 
-use crate::filter::Filter;
-
-impl Filter<Mask> for &Mask {
+impl<M: FilterMask> Filter<M> for &Cow<Mask>
+where
+    for<'a> &'a Mask: Filter<M, Output = Mask>,
+    for<'a> &'a MaskMut: Filter<M, Output = MaskMut>,
+{
     type Output = Mask;
 
-    fn filter(self, selection_mask: &Mask) -> Mask {
-        assert_eq!(
-            selection_mask.len(),
-            self.len(),
-            "Selection mask length must equal the mask length"
-        );
+    fn filter(self, selection: &M) -> Self::Output {
+        match self {
+            Cow::Frozen(b) => b.filter(selection),
+            Cow::Mutable(b) => b.filter(selection).freeze(),
+        }
+    }
+}
 
-        match (self, selection_mask) {
-            (Mask::AllTrue(_), _) => Mask::AllTrue(selection_mask.true_count()),
-            (Mask::AllFalse(_), _) => Mask::AllFalse(selection_mask.true_count()),
+impl<M: FilterMask> Filter<M> for &mut Cow<Mask>
+where
+    for<'a> &'a Mask: Filter<M, Output = Mask>,
+    for<'a> &'a mut MaskMut: Filter<M, Output = ()>,
+{
+    type Output = ();
 
-            (Mask::Values(_), Mask::AllTrue(_)) => self.clone(),
-            (Mask::Values(_), Mask::AllFalse(_)) => Mask::new_true(0),
-            (Mask::Values(v1), Mask::Values(_)) => {
-                Mask::from(v1.bit_buffer().filter(selection_mask))
+    fn filter(self, selection: &M) {
+        match self.try_mut() {
+            Ok(mutable) => {
+                mutable.filter(selection);
+            }
+            Err(frozen) => {
+                let filtered = frozen.filter(selection);
+                *self = Cow::Frozen(filtered);
             }
         }
     }
 }
 
-impl<const NB: usize> Filter<BitView<'_, NB>> for &Mask {
+impl<M: FilterMask> Filter<M> for &Mask
+where
+    for<'a> &'a BitBuffer: Filter<M, Output = BitBuffer>,
+{
     type Output = Mask;
 
-    fn filter(self, selection: &BitView<'_, NB>) -> Self::Output {
+    fn filter(self, selection: &M) -> Self::Output {
         match self {
             Mask::AllTrue(_) => Mask::AllTrue(selection.true_count()),
             Mask::AllFalse(_) => Mask::AllFalse(selection.true_count()),
@@ -42,26 +57,34 @@ impl<const NB: usize> Filter<BitView<'_, NB>> for &Mask {
     }
 }
 
-impl Filter<Mask> for &mut MaskMut {
-    type Output = ();
+impl<M: FilterMask> Filter<M> for &MaskMut
+where
+    for<'a> &'a BitBufferMut: Filter<M, Output = BitBufferMut>,
+{
+    type Output = MaskMut;
 
-    fn filter(self, selection_mask: &Mask) {
-        assert_eq!(
-            selection_mask.len(),
-            self.len(),
-            "Selection mask length must equal the mask length"
-        );
-
-        // TODO(connor): There is definitely a better way to do this (in place).
-        let filtered = self.clone().freeze().filter(selection_mask).into_mut();
-        *self = filtered;
+    fn filter(self, selection: &M) -> Self::Output {
+        if self.all_true() {
+            return MaskMut::new_true(selection.true_count());
+        }
+        if self.all_false() {
+            return MaskMut::new_false(selection.true_count());
+        }
+        MaskMut::from_buffer(
+            self.as_bit_buffer()
+                .vortex_expect("Checked all-true and all-false cases; should have bit buffer")
+                .filter(selection),
+        )
     }
 }
 
-impl<const NB: usize> Filter<BitView<'_, NB>> for &mut MaskMut {
+impl<M: FilterMask> Filter<M> for &mut MaskMut
+where
+    for<'a> &'a mut BitBufferMut: Filter<M, Output = ()>,
+{
     type Output = ();
 
-    fn filter(self, selection: &BitView<'_, NB>) -> Self::Output {
+    fn filter(self, selection: &M) -> Self::Output {
         if self.all_true() {
             *self = MaskMut::new_true(selection.true_count());
             return;

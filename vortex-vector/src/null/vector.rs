@@ -29,6 +29,12 @@ impl NullVector {
     }
 }
 
+impl From<Cow<Mask>> for NullVector {
+    fn from(value: Cow<Mask>) -> Self {
+        Self { validity: value }
+    }
+}
+
 impl VectorOps for NullVector {
     fn len(&self) -> usize {
         self.validity.len()

@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+use crate::filter::Filter;
 use vortex_buffer::BitView;
 use vortex_mask::Mask;
 use vortex_vector::{match_each_vector, Vector};
 
-use crate::filter::Filter;
-
-// mod binaryview;
+mod binaryview;
 mod bool;
-// mod decimal;
-// mod dvector;
-// mod fixed_size_list;
-// mod list;
-// mod null;
-// mod primitive;
-// mod pvector;
-// mod struct_;
+mod decimal;
+mod dvector;
+mod fixed_size_list;
+mod list;
+mod null;
+mod primitive;
+mod pvector;
+mod struct_;
 
 // To allow all vector types to implement filter generically over `M`, we must break the recursive
 // trait bounds (e.g. from StructVector requiring Vector: Filter<M> for its fields) by manually

@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use std::sync::Arc;
+use vortex_mask::Mask;
+use vortex_vector::struct_::StructVector;
+use vortex_vector::{Cow, Vector, VectorOps};
 
-use vortex_mask::{Mask, MaskMut};
-use vortex_vector::struct_::{StructVector, StructVectorMut};
-use vortex_vector::{Vector, VectorMut, VectorOps};
+use crate::filter::{Filter, FilterMask};
 
-use crate::filter::Filter;
-
-impl<M> Filter<M> for &StructVector
+impl<M: FilterMask> Filter<M> for &StructVector
 where
-    for<'a> &'a Mask: Filter<M, Output = Mask>,
+    for<'a> &'a Cow<Mask>: Filter<M, Output = Mask>,
     for<'a> &'a Vector: Filter<M, Output = Vector>,
 {
     type Output = StructVector;
@@ -23,18 +21,18 @@ where
             .map(|field| Filter::filter(field, selection))
             .collect();
 
-        let fields = Arc::new(fields.into_boxed_slice());
+        let fields = fields.into_boxed_slice();
         let validity = self.validity().filter(selection);
 
         // SAFETY: all field vectors and validity are filtered with same mask
-        unsafe { StructVector::new_unchecked(fields, validity) }
+        unsafe { StructVector::new_unchecked(fields, validity.into()) }
     }
 }
 
-impl<M> Filter<M> for &mut StructVectorMut
+impl<M: FilterMask> Filter<M> for &mut StructVector
 where
-    for<'a> &'a mut MaskMut: Filter<M, Output = ()>,
-    for<'a> &'a mut VectorMut: Filter<M, Output = ()>,
+    for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,
+    for<'a> &'a mut Vector: Filter<M, Output = ()>,
 {
     type Output = ();
 

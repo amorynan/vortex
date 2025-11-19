@@ -13,6 +13,10 @@ impl IntoMut for Mask {
     fn into_mut(self) -> MaskMut {
         Mask::into_mut(self)
     }
+
+    fn try_into_mut(self) -> Result<Self::Mutable, Self> {
+        Mask::try_into_mut(self)
+    }
 }
 
 impl IntoFrozen for MaskMut {

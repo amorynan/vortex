@@ -15,7 +15,7 @@ use crate::{match_vector_pair, Cow, Vector, VectorOps};
 ///
 /// Struct values are stored column-wise in the vector, so values in the same field are stored next
 /// to each other (rather than values in the same struct stored next to each other).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StructVector {
     /// The (owned) fields of the `StructVectorMut`, each stored column-wise as a [`Vector`].
     pub(super) fields: Box<[Vector]>,

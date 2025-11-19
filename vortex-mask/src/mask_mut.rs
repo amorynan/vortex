@@ -364,6 +364,14 @@ impl MaskMut {
     }
 
     /// Returns the internal bit buffer if it exists.
+    pub fn as_bit_buffer(&self) -> Option<&BitBufferMut> {
+        match &self.0 {
+            Inner::Builder(bits) => Some(bits),
+            _ => None,
+        }
+    }
+
+    /// Returns the internal bit buffer if it exists.
     pub fn as_bit_buffer_mut(&mut self) -> Option<&mut BitBufferMut> {
         match &mut self.0 {
             Inner::Builder(bits) => Some(bits),

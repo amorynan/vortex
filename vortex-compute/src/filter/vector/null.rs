@@ -1,48 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use vortex_buffer::BitView;
+use crate::filter::{Filter, FilterMask};
 use vortex_mask::Mask;
-use vortex_vector::null::{NullVector, NullVectorMut};
+use vortex_vector::null::NullVector;
+use vortex_vector::Cow;
 
-use crate::filter::Filter;
-
-impl Filter<Mask> for &NullVector {
+impl<M: FilterMask> Filter<M> for &NullVector
+where
+    for<'a> &'a Cow<Mask>: Filter<M, Output = Mask>,
+{
     type Output = NullVector;
 
-    fn filter(self, selection: &Mask) -> Self::Output {
+    fn filter(self, selection: &M) -> Self::Output {
         NullVector::new(selection.true_count())
     }
 }
 
-impl<const NB: usize> Filter<BitView<'_, NB>> for &NullVector {
-    type Output = NullVector;
-
-    fn filter(self, selection: &BitView<'_, NB>) -> Self::Output {
-        NullVector::new(selection.true_count())
-    }
-}
-
-impl Filter<Mask> for &mut NullVectorMut {
+impl<M: FilterMask> Filter<M> for &mut NullVector
+where
+    for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,
+{
     type Output = ();
 
-    fn filter(self, selection: &Mask) -> Self::Output {
-        *self = NullVectorMut::new(selection.true_count())
-    }
-}
-
-impl<const NB: usize> Filter<BitView<'_, NB>> for &mut NullVectorMut {
-    type Output = ();
-
-    fn filter(self, selection: &BitView<'_, NB>) -> Self::Output {
-        *self = NullVectorMut::new(selection.true_count())
+    fn filter(self, selection: &M) -> Self::Output {
+        *self = NullVector::new(selection.true_count())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use vortex_mask::Mask;
-    use vortex_vector::{VectorMutOps, VectorOps};
+    use vortex_vector::VectorOps;
 
     use super::*;
 
@@ -76,41 +65,5 @@ mod tests {
         let filtered = vec.filter(&mask);
 
         assert_eq!(filtered.len(), 0);
-    }
-
-    #[test]
-    fn test_filter_null_vector_mut_with_mask() {
-        let mut vec = NullVectorMut::new(5);
-        let mask = Mask::from_iter([true, false, true, false, true]);
-
-        vec.filter(&mask);
-
-        assert_eq!(vec.len(), 3);
-        let frozen = vec.freeze();
-        assert_eq!(frozen.len(), 3);
-        assert_eq!(frozen.validity().true_count(), 0);
-    }
-
-    #[test]
-    fn test_filter_null_vector_mut_all_true() {
-        let mut vec = NullVectorMut::new(3);
-        let mask = Mask::new_true(3);
-
-        vec.filter(&mask);
-
-        assert_eq!(vec.len(), 3);
-        let frozen = vec.freeze();
-        assert_eq!(frozen.len(), 3);
-        assert_eq!(frozen.validity().true_count(), 0);
-    }
-
-    #[test]
-    fn test_filter_null_vector_mut_all_false() {
-        let mut vec = NullVectorMut::new(3);
-        let mask = Mask::new_false(3);
-
-        vec.filter(&mask);
-
-        assert_eq!(vec.len(), 0);
     }
 }

@@ -13,6 +13,10 @@ impl<T> IntoMut for Buffer<T> {
     fn into_mut(self) -> BufferMut<T> {
         Buffer::<T>::into_mut(self)
     }
+
+    fn try_into_mut(self) -> Result<Self::Mutable, Self> {
+        Buffer::<T>::try_into_mut(self)
+    }
 }
 
 impl<T> IntoFrozen for BufferMut<T> {

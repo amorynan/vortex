@@ -6,9 +6,9 @@ use vortex_mask::Mask;
 use vortex_vector::bool::BoolVector;
 use vortex_vector::{Cow, VectorOps};
 
-use crate::filter::Filter;
+use crate::filter::{Filter, FilterMask};
 
-impl<M> Filter<M> for &BoolVector
+impl<M: FilterMask> Filter<M> for &BoolVector
 where
     for<'a> &'a Cow<BitBuffer>: Filter<M, Output = BitBuffer>,
     for<'a> &'a Cow<Mask>: Filter<M, Output = Mask>,
@@ -26,7 +26,7 @@ where
     }
 }
 
-impl<M> Filter<M> for &mut BoolVector
+impl<M: FilterMask> Filter<M> for &mut BoolVector
 where
     for<'a> &'a mut Cow<BitBuffer>: Filter<M, Output = ()>,
     for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,

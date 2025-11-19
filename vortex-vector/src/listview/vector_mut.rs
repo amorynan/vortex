@@ -30,7 +30,7 @@ use crate::{match_each_integer_pvector_mut, Cow, Vector};
 ///   `elements` vector.
 /// - `sizes`: A [`PrimitiveVector`] containing the size (number of elements) of each list.
 /// - `validity`: A [`MaskMut`] indicating which lists are null.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ListViewVector {
     /// The mutable child vector of elements.
     pub(super) elements: Box<Vector>,

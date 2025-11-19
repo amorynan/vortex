@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use vortex_vector::fixed_size_list::{FixedSizeListVector, FixedSizeListVectorMut};
+use vortex_vector::fixed_size_list::FixedSizeListVector;
 
-use crate::filter::Filter;
+use crate::filter::{Filter, FilterMask};
 
 // TODO(aduffy): there really isn't a cheap way to implement these is there.
 
-impl<M> Filter<M> for &FixedSizeListVector {
+impl<M: FilterMask> Filter<M> for &FixedSizeListVector {
     type Output = FixedSizeListVector;
 
     fn filter(self, _selection: &M) -> Self::Output {
@@ -17,7 +17,7 @@ impl<M> Filter<M> for &FixedSizeListVector {
     }
 }
 
-impl<M> Filter<M> for &mut FixedSizeListVectorMut {
+impl<M: FilterMask> Filter<M> for &mut FixedSizeListVector {
     type Output = ();
 
     fn filter(self, _selection: &M) -> Self::Output {

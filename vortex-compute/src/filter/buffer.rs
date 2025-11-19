@@ -1,15 +1,47 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
+use crate::filter::slice::FILTER_SLICES_SELECTIVITY_THRESHOLD;
+use crate::filter::{Filter, FilterMask};
 use vortex_buffer::{BitView, Buffer, BufferMut};
 use vortex_mask::{Mask, MaskIter};
+use vortex_vector::Cow;
 
-use crate::filter::Filter;
+impl<M: FilterMask, T> Filter<M> for &Cow<Buffer<T>>
+where
+    for<'a> &'a [T]: Filter<M, Output = Buffer<T>>,
+{
+    type Output = Buffer<T>;
 
-// This is modeled after the constant with the equivalent name in arrow-rs.
-const FILTER_SLICES_SELECTIVITY_THRESHOLD: f64 = 0.8;
+    fn filter(self, selection: &M) -> Self::Output {
+        match self {
+            Cow::Frozen(b) => b.as_slice().filter(selection),
+            Cow::Mutable(b) => b.as_slice().filter(selection),
+        }
+    }
+}
 
-impl<M, T: Copy> Filter<M> for Buffer<T>
+impl<M: FilterMask, T> Filter<M> for &mut Cow<Buffer<T>>
+where
+    for<'a> &'a [T]: Filter<M, Output = Buffer<T>>,
+    for<'a> &'a mut BufferMut<T>: Filter<M, Output = ()>,
+{
+    type Output = ();
+
+    fn filter(self, selection: &M) {
+        match self.try_mut() {
+            Ok(mutable) => {
+                mutable.filter(selection);
+            }
+            Err(frozen) => {
+                let filtered = frozen.as_slice().filter(selection);
+                *self = Cow::Frozen(filtered);
+            }
+        }
+    }
+}
+
+impl<M: FilterMask, T: Copy> Filter<M> for Buffer<T>
 where
     for<'a> &'a Buffer<T>: Filter<M, Output = Buffer<T>>,
     for<'a> &'a mut BufferMut<T>: Filter<M, Output = ()>,
@@ -66,7 +98,18 @@ impl<const NB: usize, T: Copy> Filter<BitView<'_, NB>> for &Buffer<T> {
     }
 }
 
-impl<M, T> Filter<M> for &mut BufferMut<T>
+impl<M: FilterMask, T> Filter<M> for &BufferMut<T>
+where
+    for<'a> &'a [T]: Filter<M, Output = Buffer<T>>,
+{
+    type Output = Buffer<T>;
+
+    fn filter(self, selection_mask: &M) -> Self::Output {
+        self.as_slice().filter(selection_mask)
+    }
+}
+
+impl<M: FilterMask, T> Filter<M> for &mut BufferMut<T>
 where
     for<'a> &'a mut [T]: Filter<M, Output = &'a mut [T]>,
 {
@@ -92,7 +135,7 @@ fn filter_slices<T>(values: &[T], output_len: usize, slices: &[(usize, usize)]) 
 
 #[cfg(test)]
 mod tests {
-    use vortex_buffer::{BufferMut, buffer, buffer_mut};
+    use vortex_buffer::{buffer, buffer_mut, BufferMut};
     use vortex_mask::Mask;
 
     use super::*;

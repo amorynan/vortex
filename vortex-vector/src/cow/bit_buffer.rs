@@ -18,6 +18,10 @@ impl IntoMut for BitBuffer {
     fn into_mut(self) -> BitBufferMut {
         BitBuffer::into_mut(self)
     }
+
+    fn try_into_mut(self) -> Result<Self::Mutable, Self> {
+        BitBuffer::try_into_mut(self)
+    }
 }
 
 impl IntoFrozen for BitBufferMut {

@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use std::sync::Arc;
+use vortex_mask::Mask;
+use vortex_vector::listview::ListViewVector;
+use vortex_vector::primitive::PrimitiveVector;
+use vortex_vector::{Cow, VectorOps};
 
-use vortex_mask::{Mask, MaskMut};
-use vortex_vector::VectorOps;
-use vortex_vector::listview::{ListViewVector, ListViewVectorMut};
-use vortex_vector::primitive::{PrimitiveVector, PrimitiveVectorMut};
+use crate::filter::{Filter, FilterMask};
 
-use crate::filter::Filter;
-
-impl<M> Filter<M> for &ListViewVector
+impl<M: FilterMask> Filter<M> for &ListViewVector
 where
     for<'a> &'a PrimitiveVector: Filter<M, Output = PrimitiveVector>,
-    for<'a> &'a Mask: Filter<M, Output = Mask>,
+    for<'a> &'a Cow<Mask>: Filter<M, Output = Mask>,
 {
     type Output = ListViewVector;
 
@@ -24,15 +22,20 @@ where
 
         // SAFETY: all components filtered with same mask
         unsafe {
-            ListViewVector::new_unchecked(Arc::clone(self.elements()), offsets, sizes, validity)
+            ListViewVector::new_unchecked(
+                Box::new((*self.elements()).clone()),
+                offsets,
+                sizes,
+                validity.into(),
+            )
         }
     }
 }
 
-impl<M> Filter<M> for &mut ListViewVectorMut
+impl<M: FilterMask> Filter<M> for &mut ListViewVector
 where
-    for<'a> &'a mut PrimitiveVectorMut: Filter<M, Output = ()>,
-    for<'a> &'a mut MaskMut: Filter<M, Output = ()>,
+    for<'a> &'a mut PrimitiveVector: Filter<M, Output = ()>,
+    for<'a> &'a mut Cow<Mask>: Filter<M, Output = ()>,
 {
     type Output = ();
 

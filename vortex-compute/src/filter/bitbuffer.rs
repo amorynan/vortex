@@ -1,30 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-use crate::filter::Filter;
+use crate::filter::{Filter, FilterMask};
 use vortex_buffer::{
-    get_bit, get_bit_unchecked, set_bit_unchecked, unset_bit_unchecked, BitBuffer, BitBufferMut,
-    BitView,
+    get_bit, get_bit_unchecked, set_bit_unchecked, unset_bit_unchecked, BitBuffer, BitBufferMut, BitView,
+    ByteBufferMut,
 };
 use vortex_mask::Mask;
 use vortex_vector::Cow;
 
-impl Filter<Mask> for &Cow<BitBuffer> {
+impl<M: FilterMask> Filter<M> for &Cow<BitBuffer>
+where
+    for<'a> &'a BitBuffer: Filter<M, Output = BitBuffer>,
+    for<'a> &'a BitBufferMut: Filter<M, Output = BitBufferMut>,
+{
     type Output = BitBuffer;
 
-    fn filter(self, selection: &Mask) -> Self::Output {
+    fn filter(self, selection: &M) -> Self::Output {
         match self {
             Cow::Frozen(b) => b.filter(selection),
-            // TODO(ngates): here would be good to use the BitView to avoid cloning.
-            Cow::Mutable(b) => b.filter(selection),
+            Cow::Mutable(b) => b.filter(selection).freeze(),
         }
     }
 }
 
-impl Filter<Mask> for &mut Cow<BitBuffer> {
+impl<M: FilterMask> Filter<M> for &mut Cow<BitBuffer>
+where
+    for<'a> &'a BitBuffer: Filter<M, Output = BitBuffer>,
+    for<'a> &'a mut BitBufferMut: Filter<M, Output = ()>,
+{
     type Output = ();
 
-    fn filter(self, selection: &Mask) {
+    fn filter(self, selection: &M) {
         match self {
             Cow::Frozen(b) => {
                 let filtered = b.filter(selection);
@@ -58,9 +65,9 @@ impl Filter<Mask> for &BitBuffer {
 }
 
 impl Filter<Mask> for &BitBufferMut {
-    type Output = BitBuffer;
+    type Output = BitBufferMut;
 
-    fn filter(self, selection_mask: &Mask) -> BitBuffer {
+    fn filter(self, selection_mask: &Mask) -> BitBufferMut {
         assert_eq!(
             selection_mask.len(),
             self.len(),
@@ -68,11 +75,9 @@ impl Filter<Mask> for &BitBufferMut {
         );
 
         match selection_mask {
-            Mask::AllTrue(_) => self.freeze(),
-            Mask::AllFalse(_) => BitBuffer::empty(),
-            Mask::Values(v) => {
-                filter_indices(self.inner().as_slice(), self.offset(), v.indices()).freeze()
-            }
+            Mask::AllTrue(_) => self.clone(),
+            Mask::AllFalse(_) => BitBufferMut::empty(),
+            Mask::Values(v) => filter_indices(self.inner().as_slice(), self.offset(), v.indices()),
         }
     }
 }
@@ -120,6 +125,40 @@ impl<const NB: usize> Filter<BitView<'_, NB>> for &BitBuffer {
             out_idx += 1;
         });
         out.freeze()
+    }
+}
+
+impl<const NB: usize> Filter<BitView<'_, NB>> for &BitBufferMut {
+    type Output = BitBufferMut;
+
+    fn filter(self, selection: &BitView<'_, NB>) -> Self::Output {
+        assert_eq!(
+            self.len(),
+            BitView::<NB>::N,
+            "Selection mask length must equal the mask length"
+        );
+
+        let offset = self.offset();
+
+        let mut out_buffer = ByteBufferMut::with_capacity(selection.true_count().div_ceil(8));
+        let out_buffer_ptr = out_buffer.as_mut_ptr();
+        let in_buffer_ptr = self.inner().as_ptr();
+
+        let mut out_idx = 0;
+        selection.iter_ones(|idx| {
+            let value = unsafe { get_bit_unchecked(in_buffer_ptr, offset + idx) };
+
+            // NOTE(ngates): we don't call out.set_bit_unchecked here because it's nice that we
+            //  can shift away any non-zero offset by writing directly into the bits buffer.
+            if value {
+                unsafe { set_bit_unchecked(out_buffer_ptr, out_idx) };
+            } else {
+                unsafe { unset_bit_unchecked(out_buffer_ptr, out_idx) };
+            }
+            out_idx += 1;
+        });
+
+        BitBufferMut::from_buffer(out_buffer, 0, selection.true_count())
     }
 }
 
