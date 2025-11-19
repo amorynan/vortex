@@ -10,8 +10,8 @@ use vortex_dtype::DType;
 use vortex_error::vortex_panic;
 use vortex_mask::Mask;
 
-use crate::binaryview::{BinaryVectorMut, StringVectorMut};
-use crate::bool::BoolVectorMut;
+use crate::binaryview::{BinaryVector, StringVector};
+use crate::bool::BoolVector;
 use crate::decimal::DecimalVectorMut;
 use crate::fixed_size_list::FixedSizeListVectorMut;
 use crate::listview::ListViewVectorMut;
@@ -34,7 +34,7 @@ pub enum VectorMut {
     /// Mutable Null vectors.
     Null(NullVectorMut),
     /// Mutable Boolean vectors.
-    Bool(BoolVectorMut),
+    Bool(BoolVector),
     /// Mutable Decimal vectors.
     ///
     /// Note that [`DecimalVectorMut`] is an enum over the different possible (generic)
@@ -50,9 +50,9 @@ pub enum VectorMut {
     /// See the documentation for more information.
     Primitive(PrimitiveVectorMut),
     /// Mutable String vectors.
-    String(StringVectorMut),
+    String(StringVector),
     /// Mutable Binary vectors.
-    Binary(BinaryVectorMut),
+    Binary(BinaryVector),
     /// Mutable vectors of Lists with variable sizes.
     List(ListViewVectorMut),
     /// Mutable vectors of Lists with fixed sizes.
@@ -66,7 +66,7 @@ impl VectorMut {
     pub fn with_capacity(dtype: &DType, capacity: usize) -> Self {
         match dtype {
             DType::Null => NullVectorMut::new(0).into(),
-            DType::Bool(_) => BoolVectorMut::with_capacity(capacity).into(),
+            DType::Bool(_) => BoolVector::with_capacity(capacity).into(),
             DType::Primitive(ptype, _) => {
                 PrimitiveVectorMut::with_capacity(*ptype, capacity).into()
             }
@@ -79,8 +79,8 @@ impl VectorMut {
             DType::Decimal(decimal_dtype, _) => {
                 DecimalVectorMut::with_capacity(decimal_dtype, capacity).into()
             }
-            DType::Utf8(..) => StringVectorMut::with_capacity(capacity).into(),
-            DType::Binary(..) => BinaryVectorMut::with_capacity(capacity).into(),
+            DType::Utf8(..) => StringVector::with_capacity(capacity).into(),
+            DType::Binary(..) => BinaryVector::with_capacity(capacity).into(),
             DType::Extension(ext) => VectorMut::with_capacity(ext.storage_dtype(), capacity),
             DType::List(..) => ListViewVectorMut::with_capacity(dtype, capacity).into(),
         }
@@ -138,8 +138,8 @@ impl VectorMut {
         vortex_panic!("Expected NullVectorMut, got {self:?}");
     }
 
-    /// Returns a reference to the inner [`BoolVectorMut`] if `self` is of that variant.
-    pub fn as_bool_mut(&mut self) -> &mut BoolVectorMut {
+    /// Returns a reference to the inner [`BoolVector`] if `self` is of that variant.
+    pub fn as_bool_mut(&mut self) -> &mut BoolVector {
         if let VectorMut::Bool(v) = self {
             return v;
         }
@@ -154,16 +154,16 @@ impl VectorMut {
         vortex_panic!("Expected PrimitiveVectorMut, got {self:?}");
     }
 
-    /// Returns a reference to the inner [`StringVectorMut`] if `self` is of that variant.
-    pub fn as_string_mut(&mut self) -> &mut StringVectorMut {
+    /// Returns a reference to the inner [`StringVector`] if `self` is of that variant.
+    pub fn as_string_mut(&mut self) -> &mut StringVector {
         if let VectorMut::String(v) = self {
             return v;
         }
         vortex_panic!("Expected StringVectorMut, got {self:?}");
     }
 
-    /// Returns a reference to the inner [`BinaryVectorMut`] if `self` is of that variant.
-    pub fn as_binary_mut(&mut self) -> &mut BinaryVectorMut {
+    /// Returns a reference to the inner [`BinaryVector`] if `self` is of that variant.
+    pub fn as_binary_mut(&mut self) -> &mut BinaryVector {
         if let VectorMut::Binary(v) = self {
             return v;
         }
@@ -202,8 +202,8 @@ impl VectorMut {
         vortex_panic!("Expected NullVectorMut, got {self:?}");
     }
 
-    /// Consumes `self` and returns the inner [`BoolVectorMut`] if `self` is of that variant.
-    pub fn into_bool(self) -> BoolVectorMut {
+    /// Consumes `self` and returns the inner [`BoolVector`] if `self` is of that variant.
+    pub fn into_bool(self) -> BoolVector {
         if let VectorMut::Bool(v) = self {
             return v;
         }
@@ -218,18 +218,18 @@ impl VectorMut {
         vortex_panic!("Expected PrimitiveVectorMut, got {self:?}");
     }
 
-    /// Consumes `self` and returns the inner [`StringVectorMut`] if `self` is of that variant.
+    /// Consumes `self` and returns the inner [`StringVector`] if `self` is of that variant.
     #[allow(clippy::same_name_method)] // Same as VarBinTypeDowncast
-    pub fn into_string(self) -> StringVectorMut {
+    pub fn into_string(self) -> StringVector {
         if let VectorMut::String(v) = self {
             return v;
         }
         vortex_panic!("Expected StringVectorMut, got {self:?}");
     }
 
-    /// Consumes `self` and returns the inner [`BinaryVectorMut`] if `self` is of that variant.
+    /// Consumes `self` and returns the inner [`BinaryVector`] if `self` is of that variant.
     #[allow(clippy::same_name_method)] // Same as VarBinTypeDowncast
-    pub fn into_binary(self) -> BinaryVectorMut {
+    pub fn into_binary(self) -> BinaryVector {
         if let VectorMut::Binary(v) = self {
             return v;
         }

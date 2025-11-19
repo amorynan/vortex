@@ -64,7 +64,7 @@ macro_rules! match_each_vector {
 ///
 /// ```
 /// use vortex_vector::VectorMut;
-/// use vortex_vector::bool::BoolVectorMut;
+/// use vortex_vector::bool::BoolVector;
 /// use vortex_vector::null::NullVectorMut;
 /// use vortex_vector::{VectorMutOps, match_each_vector_mut};
 ///
@@ -78,7 +78,7 @@ macro_rules! match_each_vector {
 /// assert!(null_vec.capacity() >= 15);
 ///
 /// // Works with `Bool` mutable vectors.
-/// let mut bool_vec: VectorMut = BoolVectorMut::from_iter([true, false].map(Some)).into();
+/// let mut bool_vec: VectorMut = BoolVector::from_iter([true, false].map(Some)).into();
 /// reserve_space(&mut bool_vec, 5);
 /// assert!(bool_vec.capacity() >= 7);
 /// ```
@@ -149,7 +149,7 @@ macro_rules! __match_vector_pair_arms {
 ///
 /// ```
 /// use vortex_vector::{Vector, VectorMut, VectorMutOps, match_vector_pair};
-/// use vortex_vector::bool::{BoolVector, BoolVectorMut};
+/// use vortex_vector::bool::{BoolVector, BoolVector};
 ///
 /// fn extend_vector(left: &mut VectorMut, right: &Vector) {
 ///     match_vector_pair!(left, right, |a: VectorMut, b: Vector| {
@@ -157,8 +157,8 @@ macro_rules! __match_vector_pair_arms {
 ///     })
 /// }
 ///
-/// let mut mut_vec: VectorMut = BoolVectorMut::from_iter([true, false, true]).into();
-/// let vec: Vector = BoolVectorMut::from_iter([false, true]).freeze().into();
+/// let mut mut_vec: VectorMut = BoolVector::from_iter([true, false, true]).into();
+/// let vec: Vector = BoolVector::from_iter([false, true]).freeze().into();
 ///
 /// extend_vector(&mut mut_vec, &vec);
 /// assert_eq!(mut_vec.len(), 5);
@@ -168,7 +168,7 @@ macro_rules! __match_vector_pair_arms {
 ///
 /// ```
 /// use vortex_vector::{Vector, VectorMut, VectorMutOps, match_vector_pair};
-/// use vortex_vector::bool::{BoolVector, BoolVectorMut};
+/// use vortex_vector::bool::{BoolVector, BoolVector};
 ///
 /// fn extend_vector_owned(mut dest: VectorMut, src: Vector) -> VectorMut {
 ///     match_vector_pair!(&mut dest, src, |a: VectorMut, b: Vector| {
@@ -177,8 +177,8 @@ macro_rules! __match_vector_pair_arms {
 ///     })
 /// }
 ///
-/// let mut_vec: VectorMut = BoolVectorMut::from_iter([true, false, true]).into();
-/// let vec: Vector = BoolVectorMut::from_iter([false, true]).freeze().into();
+/// let mut_vec: VectorMut = BoolVector::from_iter([true, false, true]).into();
+/// let vec: Vector = BoolVector::from_iter([false, true]).freeze().into();
 ///
 /// let new_bool_mut = extend_vector_owned(mut_vec, vec);
 /// assert_eq!(new_bool_mut.len(), 5);

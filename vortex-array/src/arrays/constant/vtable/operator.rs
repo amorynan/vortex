@@ -2,21 +2,21 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use vortex_dtype::{
-    DType, DecimalType, PrecisionScale, match_each_decimal_value_type, match_each_native_ptype,
+    match_each_decimal_value_type, match_each_native_ptype, DType, DecimalType, PrecisionScale,
 };
 use vortex_error::{VortexExpect, VortexResult};
 use vortex_scalar::{BinaryScalar, BoolScalar, DecimalScalar, PrimitiveScalar, Scalar, Utf8Scalar};
-use vortex_vector::binaryview::{BinaryVectorMut, StringVectorMut};
-use vortex_vector::bool::BoolVectorMut;
+use vortex_vector::binaryview::{BinaryVector, StringVector};
+use vortex_vector::bool::BoolVector;
 use vortex_vector::decimal::{DVectorMut, DecimalVectorMut};
 use vortex_vector::null::NullVectorMut;
 use vortex_vector::primitive::{PVectorMut, PrimitiveVectorMut};
 use vortex_vector::{VectorMut, VectorMutOps};
 
-use crate::ArrayRef;
 use crate::arrays::{ConstantArray, ConstantVTable};
-use crate::execution::{BatchKernelRef, BindCtx, kernel};
+use crate::execution::{kernel, BatchKernelRef, BindCtx};
 use crate::vtable::OperatorVTable;
+use crate::ArrayRef;
 
 impl OperatorVTable<ConstantVTable> for ConstantVTable {
     fn bind(
@@ -50,8 +50,8 @@ fn to_vector(scalar: Scalar, len: usize) -> VectorMut {
     }
 }
 
-fn to_vector_bool(scalar: BoolScalar, len: usize) -> BoolVectorMut {
-    let mut vec = BoolVectorMut::with_capacity(len);
+fn to_vector_bool(scalar: BoolScalar, len: usize) -> BoolVector {
+    let mut vec = BoolVector::with_capacity(len);
     match scalar.value() {
         Some(v) => vec.append_values(v, len),
         None => vec.append_nulls(len),
@@ -90,8 +90,8 @@ fn to_vector_decimal(scalar: DecimalScalar, len: usize) -> DecimalVectorMut {
     })
 }
 
-fn to_vector_utf8(scalar: Utf8Scalar, len: usize) -> StringVectorMut {
-    let mut vec = StringVectorMut::with_capacity(len);
+fn to_vector_utf8(scalar: Utf8Scalar, len: usize) -> StringVector {
+    let mut vec = StringVector::with_capacity(len);
     match scalar.value() {
         Some(v) => vec.append_values(v.as_ref(), len),
         None => vec.append_nulls(len),
@@ -99,8 +99,8 @@ fn to_vector_utf8(scalar: Utf8Scalar, len: usize) -> StringVectorMut {
     vec
 }
 
-fn to_vector_binary(scalar: BinaryScalar, len: usize) -> BinaryVectorMut {
-    let mut vec = BinaryVectorMut::with_capacity(len);
+fn to_vector_binary(scalar: BinaryScalar, len: usize) -> BinaryVector {
+    let mut vec = BinaryVector::with_capacity(len);
     match scalar.value() {
         Some(v) => vec.append_values(v.as_ref(), len),
         None => vec.append_nulls(len),

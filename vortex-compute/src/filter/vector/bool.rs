@@ -3,8 +3,8 @@
 
 use vortex_buffer::BitBuffer;
 use vortex_mask::{Mask, MaskMut};
+use vortex_vector::bool::{BoolVector, BoolVector};
 use vortex_vector::VectorOps;
-use vortex_vector::bool::{BoolVector, BoolVectorMut};
 
 use crate::filter::Filter;
 
@@ -26,7 +26,7 @@ where
     }
 }
 
-impl<M> Filter<M> for &mut BoolVectorMut
+impl<M> Filter<M> for &mut BoolVector
 where
     for<'a> &'a BitBuffer: Filter<M, Output = BitBuffer>,
     for<'a> &'a mut MaskMut: Filter<M, Output = ()>,
@@ -47,7 +47,7 @@ where
 mod tests {
     use vortex_buffer::BitBuffer;
     use vortex_mask::Mask;
-    use vortex_vector::bool::BoolVectorMut;
+    use vortex_vector::bool::BoolVector;
     use vortex_vector::{VectorMutOps, VectorOps};
 
     use super::*;
@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn test_filter_bool_vector_with_mask() {
-        let vec = BoolVectorMut::from_iter([true, false, true, false, true]).freeze();
+        let vec = BoolVector::from_iter([true, false, true, false, true]).freeze();
         let mask = Mask::from_iter([true, false, true, false, true]);
 
         let filtered = vec.filter(&mask);
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn test_filter_bool_vector_with_mask_indices() {
-        let vec = BoolVectorMut::from_iter([true, false, true, false, true]).freeze();
+        let vec = BoolVector::from_iter([true, false, true, false, true]).freeze();
         let indices = unsafe { MaskIndices::new_unchecked(&[0, 2, 4]) };
 
         let filtered = vec.filter(&indices);
@@ -79,8 +79,7 @@ mod tests {
 
     #[test]
     fn test_filter_bool_vector_with_nulls() {
-        let vec =
-            BoolVectorMut::from_iter([Some(true), None, Some(false), Some(true), None]).freeze();
+        let vec = BoolVector::from_iter([Some(true), None, Some(false), Some(true), None]).freeze();
         let mask = Mask::from_iter([true, true, false, true, false]);
 
         let filtered = vec.filter(&mask);
@@ -97,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_filter_bool_vector_all_true() {
-        let vec = BoolVectorMut::from_iter([true, false, true]).freeze();
+        let vec = BoolVector::from_iter([true, false, true]).freeze();
         let mask = Mask::new_true(3);
 
         let filtered = vec.filter(&mask);
@@ -108,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_filter_bool_vector_all_false() {
-        let vec = BoolVectorMut::from_iter([true, false, true]).freeze();
+        let vec = BoolVector::from_iter([true, false, true]).freeze();
         let mask = Mask::new_false(3);
 
         let filtered = vec.filter(&mask);
@@ -118,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_filter_bool_vector_mut_with_mask() {
-        let mut vec = BoolVectorMut::from_iter([true, false, true, false, true]);
+        let mut vec = BoolVector::from_iter([true, false, true, false, true]);
         let mask = Mask::from_iter([true, false, true, false, true]);
 
         vec.filter(&mask);
@@ -131,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_filter_bool_vector_mut_with_mask_indices() {
-        let mut vec = BoolVectorMut::from_iter([true, false, true, false, true]);
+        let mut vec = BoolVector::from_iter([true, false, true, false, true]);
         let indices = unsafe { MaskIndices::new_unchecked(&[0, 2, 4]) };
 
         vec.filter(&indices);
@@ -144,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_filter_bool_vector_mut_with_nulls() {
-        let mut vec = BoolVectorMut::from_iter([Some(true), None, Some(false), Some(true), None]);
+        let mut vec = BoolVector::from_iter([Some(true), None, Some(false), Some(true), None]);
         let mask = Mask::from_iter([true, true, false, true, false]);
 
         vec.filter(&mask);

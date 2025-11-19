@@ -3,10 +3,8 @@
 
 use vortex_buffer::{Buffer, BufferMut};
 use vortex_mask::{Mask, MaskMut};
+use vortex_vector::binaryview::{BinaryView, BinaryViewType, BinaryViewVector, BinaryViewVector};
 use vortex_vector::VectorOps;
-use vortex_vector::binaryview::{
-    BinaryView, BinaryViewType, BinaryViewVector, BinaryViewVectorMut,
-};
 
 use crate::filter::Filter;
 
@@ -26,7 +24,7 @@ where
     }
 }
 
-impl<M, T: BinaryViewType> Filter<M> for &mut BinaryViewVectorMut<T>
+impl<M, T: BinaryViewType> Filter<M> for &mut BinaryViewVector<T>
 where
     for<'a> &'a mut MaskMut: Filter<M, Output = ()>,
     for<'a> &'a mut BufferMut<BinaryView>: Filter<M, Output = ()>,
@@ -46,7 +44,7 @@ where
 #[cfg(test)]
 mod tests {
     use vortex_mask::Mask;
-    use vortex_vector::binaryview::StringVectorMut;
+    use vortex_vector::binaryview::StringVector;
     use vortex_vector::{VectorMutOps, VectorOps};
 
     use super::*;
@@ -54,7 +52,7 @@ mod tests {
 
     #[test]
     fn test_filter_binary_view_vector_with_mask() {
-        let mut vec = StringVectorMut::with_capacity(5);
+        let mut vec = StringVector::with_capacity(5);
         vec.append_values("hello", 1);
         vec.append_values("world", 1);
         vec.append_values("foo", 1);
@@ -75,7 +73,7 @@ mod tests {
 
     #[test]
     fn test_filter_binary_view_vector_with_mask_indices() {
-        let mut vec = StringVectorMut::with_capacity(5);
+        let mut vec = StringVector::with_capacity(5);
         vec.append_values("hello", 1);
         vec.append_values("world", 1);
         vec.append_values("foo", 1);
@@ -96,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_filter_binary_view_vector_with_nulls() {
-        let mut vec = StringVectorMut::with_capacity(5);
+        let mut vec = StringVector::with_capacity(5);
         vec.append_values("hello", 1);
         vec.append_nulls(1);
         vec.append_values("foo", 1);
@@ -117,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_filter_binary_view_vector_all_true() {
-        let mut vec = StringVectorMut::with_capacity(3);
+        let mut vec = StringVector::with_capacity(3);
         vec.append_values("hello", 1);
         vec.append_values("world", 1);
         vec.append_values("foo", 1);
@@ -135,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_filter_binary_view_vector_all_false() {
-        let mut vec = StringVectorMut::with_capacity(3);
+        let mut vec = StringVector::with_capacity(3);
         vec.append_values("hello", 1);
         vec.append_values("world", 1);
         vec.append_values("foo", 1);
@@ -150,7 +148,7 @@ mod tests {
 
     #[test]
     fn test_filter_binary_view_vector_mut_with_mask() {
-        let mut vec = StringVectorMut::with_capacity(5);
+        let mut vec = StringVector::with_capacity(5);
         vec.append_values("hello", 1);
         vec.append_values("world", 1);
         vec.append_values("foo", 1);
@@ -172,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_filter_binary_view_vector_mut_with_mask_indices() {
-        let mut vec = StringVectorMut::with_capacity(5);
+        let mut vec = StringVector::with_capacity(5);
         vec.append_values("hello", 1);
         vec.append_values("world", 1);
         vec.append_values("foo", 1);
@@ -194,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_filter_binary_view_vector_mut_with_nulls() {
-        let mut vec = StringVectorMut::with_capacity(5);
+        let mut vec = StringVector::with_capacity(5);
         vec.append_values("hello", 1);
         vec.append_nulls(1);
         vec.append_values("foo", 1);
