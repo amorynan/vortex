@@ -257,7 +257,9 @@ impl VectorMutOps for StructVector {
             )
         }
 
-        // self.validity.unsplit(other.validity);
+        self.validity
+            .ensure_mut()
+            .unsplit(other.validity.into_mut());
         self.len += other.len;
         debug_assert_eq!(self.len, self.validity.len());
     }
