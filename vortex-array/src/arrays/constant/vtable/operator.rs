@@ -8,7 +8,7 @@ use vortex_error::{VortexExpect, VortexResult};
 use vortex_scalar::{BinaryScalar, BoolScalar, DecimalScalar, PrimitiveScalar, Scalar, Utf8Scalar};
 use vortex_vector::binaryview::{BinaryVector, StringVector};
 use vortex_vector::bool::BoolVector;
-use vortex_vector::decimal::{DVectorMut, DecimalVectorMut};
+use vortex_vector::decimal::{DVector, DecimalVector};
 use vortex_vector::null::NullVectorMut;
 use vortex_vector::primitive::{PVectorMut, PrimitiveVectorMut};
 use vortex_vector::{VectorMut, VectorMutOps};
@@ -70,7 +70,7 @@ fn to_vector_primitive(scalar: PrimitiveScalar, len: usize) -> PrimitiveVectorMu
     })
 }
 
-fn to_vector_decimal(scalar: DecimalScalar, len: usize) -> DecimalVectorMut {
+fn to_vector_decimal(scalar: DecimalScalar, len: usize) -> DecimalVector {
     let decimal_dtype = scalar
         .dtype()
         .as_decimal_opt()
@@ -79,7 +79,7 @@ fn to_vector_decimal(scalar: DecimalScalar, len: usize) -> DecimalVectorMut {
 
     match_each_decimal_value_type!(decimal_type, |D| {
         let ps = PrecisionScale::<D>::new(decimal_dtype.precision(), decimal_dtype.scale());
-        let mut vec = DVectorMut::<D>::with_capacity(ps, len);
+        let mut vec = DVector::<D>::with_capacity(ps, len);
         match scalar.decimal_value() {
             Some(v) => vec
                 .try_append_n(v.cast::<D>().vortex_expect("known to fit"), len)

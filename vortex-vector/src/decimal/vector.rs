@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Definition and implementation of [`DecimalVectorMut`].
+//! Definition and implementation of [`DecimalVector`].
 
 use vortex_dtype::{
     i256, match_each_decimal_value_type, DecimalDType, DecimalType, DecimalTypeDowncast,
@@ -10,27 +10,27 @@ use vortex_dtype::{
 use vortex_error::vortex_panic;
 use vortex_mask::Mask;
 
-use crate::decimal::DVectorMut;
+use crate::decimal::DVector;
 use crate::{match_each_dvector_mut, Cow, VectorMutOps};
 
 /// An enum over all supported decimal mutable vector types.
 #[derive(Clone, Debug)]
-pub enum DecimalVectorMut {
+pub enum DecimalVector {
     /// A decimal vector with 8-bit integer representation.
-    D8(DVectorMut<i8>),
+    D8(DVector<i8>),
     /// A decimal vector with 16-bit integer representation.
-    D16(DVectorMut<i16>),
+    D16(DVector<i16>),
     /// A decimal vector with 32-bit integer representation.
-    D32(DVectorMut<i32>),
+    D32(DVector<i32>),
     /// A decimal vector with 64-bit integer representation.
-    D64(DVectorMut<i64>),
+    D64(DVector<i64>),
     /// A decimal vector with 128-bit integer representation.
-    D128(DVectorMut<i128>),
+    D128(DVector<i128>),
     /// A decimal vector with 256-bit integer representation.
-    D256(DVectorMut<i256>),
+    D256(DVector<i256>),
 }
 
-impl DecimalVectorMut {
+impl DecimalVector {
     /// Returns the [`DecimalType`] of the decimal vector.
     pub fn decimal_type(&self) -> DecimalType {
         match self {
@@ -48,12 +48,12 @@ impl DecimalVectorMut {
         let decimal_type = DecimalType::smallest_decimal_value_type(decimal_dtype);
         match_each_decimal_value_type!(decimal_type, |D| {
             let ps = PrecisionScale::<D>::new(decimal_dtype.precision(), decimal_dtype.scale());
-            DVectorMut::<D>::with_capacity(ps, capacity).into()
+            DVector::<D>::with_capacity(ps, capacity).into()
         })
     }
 }
 
-impl VectorMutOps for DecimalVectorMut {
+impl VectorMutOps for DecimalVector {
     fn len(&self) -> usize {
         match_each_dvector_mut!(self, |d| { d.len() })
     }
@@ -103,8 +103,8 @@ impl VectorMutOps for DecimalVectorMut {
     }
 }
 
-impl DecimalTypeDowncast for DecimalVectorMut {
-    type Output<T: NativeDecimalType> = DVectorMut<T>;
+impl DecimalTypeDowncast for DecimalVector {
+    type Output<T: NativeDecimalType> = DVector<T>;
 
     fn into_i8(self) -> Self::Output<i8> {
         if let Self::D8(vec) = self {
@@ -149,8 +149,8 @@ impl DecimalTypeDowncast for DecimalVectorMut {
     }
 }
 
-impl DecimalTypeUpcast for DecimalVectorMut {
-    type Input<T: NativeDecimalType> = DVectorMut<T>;
+impl DecimalTypeUpcast for DecimalVector {
+    type Input<T: NativeDecimalType> = DVector<T>;
 
     fn from_i8(input: Self::Input<i8>) -> Self {
         Self::D8(input)

@@ -3,11 +3,11 @@
 
 //! Definitions and implementations of decimal vector types.
 //!
-//! The types that hold data are [`DVector`] and [`DVectorMut`], which are generic over types `D`
-//! that implement [`NativeDecimalType`].
+//! The types that hold data are [`DVector`], which is generic over types `D` that
+//! implement [`NativeDecimalType`].
 //!
-//! [`DecimalVector`] and [`DecimalVectorMut`] are enums that wrap all of the different possible
-//! [`DVector`]s. There are several macros defined in this crate to make working with these
+//! [`DecimalVector`] is an enums that wraps all the different possible [`DVector`]s. There are
+//! several macros defined in this crate to make working with these
 //! primitive vector types easier.
 //!
 //! # Examples
@@ -16,12 +16,12 @@
 //!
 //! ```
 //! use vortex_dtype::{PrecisionScale};
-//! use vortex_vector::decimal::{DVectorMut};
+//! use vortex_vector::decimal::{DVector};
 //! use vortex_vector::VectorMutOps;
 //!
 //! // Create a decimal vector with precision=9, scale=2 (e.g., up to 9999999.99).
 //! let ps = PrecisionScale::<i32>::new(9, 2);
-//! let mut vec = DVectorMut::<i32>::with_capacity(ps, 5);
+//! let mut vec = DVector::<i32>::with_capacity(ps, 5);
 //! assert_eq!(vec.len(), 0);
 //! assert!(vec.capacity() >= 5);
 //!
@@ -40,7 +40,7 @@
 //! use vortex_mask::MaskMut;
 //! let elements = BufferMut::from_iter([100_i32, 200, 300]);  // 1.00, 2.00, 3.00.
 //! let validity = MaskMut::new_true(3);
-//! let decimal_vec = DVectorMut::<i32>::new(ps, elements, validity);
+//! let decimal_vec = DVector::<i32>::new(ps, elements, validity);
 //! assert_eq!(decimal_vec.len(), 3);
 //! ```
 //!
@@ -50,7 +50,7 @@
 //! use vortex_buffer::BufferMut;
 //! use vortex_dtype::{PrecisionScale};
 //! use vortex_mask::MaskMut;
-//! use vortex_vector::decimal::DVectorMut;
+//! use vortex_vector::decimal::DVector;
 //! use vortex_vector::VectorMutOps;
 //!
 //! // Create a decimal vector with nulls.
@@ -63,7 +63,7 @@
 //! validity.append_n(false, 1);  // index 1: null
 //! validity.append_n(true, 1);   // index 2: valid
 //! validity.append_n(false, 1);  // index 3: null
-//! let mut vec = DVectorMut::new(ps, elements, validity);
+//! let mut vec = DVector::new(ps, elements, validity);
 //!
 //! // Check element access with nulls.
 //! assert_eq!(vec.get(0), Some(&1000));  // 10.00.
@@ -79,16 +79,16 @@
 //!
 //! ```
 //! use vortex_dtype::{PrecisionScale};
-//! use vortex_vector::decimal::DVectorMut;
+//! use vortex_vector::decimal::DVector;
 //! use vortex_vector::VectorMutOps;
 //!
 //! // Create two decimal vectors with scale=3 (3 decimal places).
 //! let ps = PrecisionScale::<i64>::new(10, 3);
-//! let mut vec1 = DVectorMut::<i64>::with_capacity(ps, 10);
+//! let mut vec1 = DVector::<i64>::with_capacity(ps, 10);
 //! vec1.try_push(1234567).unwrap();  // 1234.567.
 //! vec1.try_push(2345678).unwrap();  // 2345.678.
 //!
-//! let mut vec2 = DVectorMut::<i64>::with_capacity(ps, 10);
+//! let mut vec2 = DVector::<i64>::with_capacity(ps, 10);
 //! vec2.try_push(3456789).unwrap();  // 3456.789.
 //! vec2.try_push(4567890).unwrap();  // 4567.890.
 //!
@@ -115,12 +115,12 @@
 //!
 //! ```
 //! use vortex_dtype::{PrecisionScale};
-//! use vortex_vector::decimal::DVectorMut;
+//! use vortex_vector::decimal::DVector;
 //! use vortex_vector::{VectorMutOps, VectorOps};
 //!
 //! // Create a mutable decimal vector.
 //! let ps = PrecisionScale::<i128>::new(18, 6);  // High precision with 6 decimal places.
-//! let mut vec_mut = DVectorMut::<i128>::with_capacity(ps, 3);
+//! let mut vec_mut = DVector::<i128>::with_capacity(ps, 3);
 //! vec_mut.try_push(1000000).unwrap();    // 1.000000.
 //! vec_mut.try_push(2500000).unwrap();    // 2.500000.
 //! vec_mut.try_push(3333333).unwrap();    // 3.333333.
@@ -139,17 +139,11 @@
 //! // assert_eq!(vec_mut_again.len(), 3);
 //! ```
 
-// mod generic;
-// pub use generic::DVector;
+mod generic;
+pub use generic::DVector;
 
-mod generic_mut;
-pub use generic_mut::DVectorMut;
-
-// mod vector;
-// pub use vector::DecimalVector;
-
-mod vector_mut;
-pub use vector_mut::DecimalVectorMut;
+mod vector;
+pub use vector::DecimalVector;
 
 // mod scalar;
 // pub use scalar::{DScalar, DecimalScalar};
@@ -160,38 +154,20 @@ use vortex_dtype::NativeDecimalType;
 
 use crate::VectorMut;
 
-// impl From<DecimalVector> for Vector {
-//     fn from(v: DecimalVector) -> Self {
-//         Self::Decimal(v)
-//     }
-// }
-
-// impl<D: NativeDecimalType> From<DVector<D>> for DecimalVector {
-//     fn from(value: DVector<D>) -> Self {
-//         D::upcast(value)
-//     }
-// }
-
-// impl<D: NativeDecimalType> From<DVector<D>> for Vector {
-//     fn from(v: DVector<D>) -> Self {
-//         Self::Decimal(DecimalVector::from(v))
-//     }
-// }
-
-impl From<DecimalVectorMut> for VectorMut {
-    fn from(v: DecimalVectorMut) -> Self {
+impl From<DecimalVector> for VectorMut {
+    fn from(v: DecimalVector) -> Self {
         Self::Decimal(v)
     }
 }
 
-impl<D: NativeDecimalType> From<DVectorMut<D>> for DecimalVectorMut {
-    fn from(val: DVectorMut<D>) -> Self {
+impl<D: NativeDecimalType> From<DVector<D>> for DecimalVector {
+    fn from(val: DVector<D>) -> Self {
         D::upcast(val)
     }
 }
 
-impl<D: NativeDecimalType> From<DVectorMut<D>> for VectorMut {
-    fn from(val: DVectorMut<D>) -> Self {
-        Self::Decimal(DecimalVectorMut::from(val))
+impl<D: NativeDecimalType> From<DVector<D>> for VectorMut {
+    fn from(val: DVector<D>) -> Self {
+        Self::Decimal(DecimalVector::from(val))
     }
 }

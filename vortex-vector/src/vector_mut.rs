@@ -12,7 +12,7 @@ use vortex_mask::Mask;
 
 use crate::binaryview::{BinaryVector, StringVector};
 use crate::bool::BoolVector;
-use crate::decimal::DecimalVectorMut;
+use crate::decimal::DecimalVector;
 use crate::fixed_size_list::FixedSizeListVectorMut;
 use crate::listview::ListViewVectorMut;
 use crate::null::NullVectorMut;
@@ -37,11 +37,11 @@ pub enum VectorMut {
     Bool(BoolVector),
     /// Mutable Decimal vectors.
     ///
-    /// Note that [`DecimalVectorMut`] is an enum over the different possible (generic)
-    /// [`DVectorMut<D>`](crate::decimal::DVectorMut)s.
+    /// Note that [`DecimalVector`] is an enum over the different possible (generic)
+    /// [`DVectorMut<D>`](crate::decimal::DVector)s.
     ///
     /// See the [documentation](crate::decimal) for more information.
-    Decimal(DecimalVectorMut),
+    Decimal(DecimalVector),
     /// Mutable Primitive vectors.
     ///
     /// Note that [`PrimitiveVectorMut`] is an enum over the different possible (generic)
@@ -77,7 +77,7 @@ impl VectorMut {
                 StructVectorMut::with_capacity(struct_fields, capacity).into()
             }
             DType::Decimal(decimal_dtype, _) => {
-                DecimalVectorMut::with_capacity(decimal_dtype, capacity).into()
+                DecimalVector::with_capacity(decimal_dtype, capacity).into()
             }
             DType::Utf8(..) => StringVector::with_capacity(capacity).into(),
             DType::Binary(..) => BinaryVector::with_capacity(capacity).into(),

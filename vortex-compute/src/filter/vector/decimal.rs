@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
 use vortex_mask::Mask;
-use vortex_vector::decimal::{DecimalVector, DecimalVectorMut};
+use vortex_vector::decimal::{DecimalVector, DecimalVector};
 use vortex_vector::{match_each_dvector, match_each_dvector_mut};
 
 use crate::filter::{Filter, MaskIndices};
@@ -23,7 +23,7 @@ impl Filter<MaskIndices<'_>> for &DecimalVector {
     }
 }
 
-impl Filter<Mask> for &mut DecimalVectorMut {
+impl Filter<Mask> for &mut DecimalVector {
     type Output = ();
 
     fn filter(self, selection: &Mask) -> Self::Output {
@@ -31,7 +31,7 @@ impl Filter<Mask> for &mut DecimalVectorMut {
     }
 }
 
-impl Filter<MaskIndices<'_>> for &mut DecimalVectorMut {
+impl Filter<MaskIndices<'_>> for &mut DecimalVector {
     type Output = ();
 
     fn filter(self, selection: &MaskIndices) -> Self::Output {
@@ -44,7 +44,7 @@ mod tests {
     use vortex_buffer::BufferMut;
     use vortex_dtype::{DecimalTypeDowncast, PrecisionScale};
     use vortex_mask::{Mask, MaskMut};
-    use vortex_vector::decimal::DVectorMut;
+    use vortex_vector::decimal::DVector;
     use vortex_vector::{VectorMutOps, VectorOps};
 
     use super::*;
@@ -54,7 +54,7 @@ mod tests {
         let ps = PrecisionScale::<i32>::new(9, 2);
         let elements = BufferMut::from_iter([100_i32, 200, 300, 400, 500]);
         let validity = MaskMut::new_true(5);
-        let vec = DecimalVector::from(DVectorMut::new(ps, elements, validity).freeze());
+        let vec = DecimalVector::from(DVector::new(ps, elements, validity).freeze());
 
         let mask = Mask::from_iter([true, false, true, false, true]);
 
@@ -73,7 +73,7 @@ mod tests {
         let ps = PrecisionScale::<i32>::new(9, 2);
         let elements = BufferMut::from_iter([100_i32, 200, 300, 400, 500]);
         let validity = MaskMut::new_true(5);
-        let vec = DecimalVector::from(DVectorMut::new(ps, elements, validity).freeze());
+        let vec = DecimalVector::from(DVector::new(ps, elements, validity).freeze());
 
         let indices = unsafe { MaskIndices::new_unchecked(&[0, 2, 4]) };
 
@@ -97,7 +97,7 @@ mod tests {
         validity.append_n(true, 1);
         validity.append_n(true, 1);
         validity.append_n(false, 1);
-        let vec = DecimalVector::from(DVectorMut::new(ps, elements, validity).freeze());
+        let vec = DecimalVector::from(DVector::new(ps, elements, validity).freeze());
 
         let mask = Mask::from_iter([true, true, false, true, false]);
 
@@ -116,7 +116,7 @@ mod tests {
         let ps = PrecisionScale::<i32>::new(9, 2);
         let elements = BufferMut::from_iter([100_i32, 200, 300]);
         let validity = MaskMut::new_true(3);
-        let vec = DecimalVector::from(DVectorMut::new(ps, elements, validity).freeze());
+        let vec = DecimalVector::from(DVector::new(ps, elements, validity).freeze());
 
         let mask = Mask::new_true(3);
 
@@ -134,7 +134,7 @@ mod tests {
         let ps = PrecisionScale::<i32>::new(9, 2);
         let elements = BufferMut::from_iter([100_i32, 200, 300]);
         let validity = MaskMut::new_true(3);
-        let vec = DVectorMut::new(ps, elements, validity).freeze();
+        let vec = DVector::new(ps, elements, validity).freeze();
 
         let mask = Mask::new_false(3);
 
@@ -148,7 +148,7 @@ mod tests {
         let ps = PrecisionScale::<i32>::new(9, 2);
         let elements = BufferMut::from_iter([100_i32, 200, 300, 400, 500]);
         let validity = MaskMut::new_true(5);
-        let mut vec = DecimalVectorMut::from(DVectorMut::new(ps, elements, validity));
+        let mut vec = DecimalVector::from(DVector::new(ps, elements, validity));
 
         let mask = Mask::from_iter([true, false, true, false, true]);
 
@@ -169,7 +169,7 @@ mod tests {
         let ps = PrecisionScale::<i32>::new(9, 2);
         let elements = BufferMut::from_iter([100_i32, 200, 300, 400, 500]);
         let validity = MaskMut::new_true(5);
-        let mut vec = DecimalVectorMut::from(DVectorMut::new(ps, elements, validity));
+        let mut vec = DecimalVector::from(DVector::new(ps, elements, validity));
 
         let indices = unsafe { MaskIndices::new_unchecked(&[0, 2, 4]) };
 
@@ -195,7 +195,7 @@ mod tests {
         validity.append_n(true, 1);
         validity.append_n(true, 1);
         validity.append_n(false, 1);
-        let mut vec = DecimalVectorMut::from(DVectorMut::new(ps, elements, validity));
+        let mut vec = DecimalVector::from(DVector::new(ps, elements, validity));
 
         let mask = Mask::from_iter([true, true, false, true, false]);
 

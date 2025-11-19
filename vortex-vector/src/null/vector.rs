@@ -1,67 +1,88 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-//! Definition and implementation of [`NullVector`].
+//! Definition and implementation of [`NullVectorMut`].
 
-use std::fmt::Debug;
-use std::ops::RangeBounds;
+use vortex_mask::{Mask, MaskMut};
 
-use vortex_mask::Mask;
+use crate::{Cow, VectorMutOps};
 
-use crate::null::{NullScalar, NullVectorMut};
-use crate::{Scalar, VectorOps};
-
-/// An immutable vector of null values.
+/// A mutable vector of null values.
 ///
 /// Since a "null" value does not require any data storage, the nulls are stored internally with a
 /// single `length` counter.
 ///
-/// The mutable equivalent of this type is [`NullVectorMut`].
+/// The immutable equivalent of this type is [`NullVector`].
 #[derive(Debug, Clone)]
-pub struct NullVector {
-    /// The total number of nulls.
-    pub(super) len: usize,
-    /// The validity mask. We only store this in order to implement the
-    /// [`validity()`](Self::validity) method.
-    pub(super) validity: Mask,
+pub struct NullVectorMut {
+    /// In theory, we only need to store a length, but in order to return `&Cow<Mask>` from the
+    /// [`validity()`](Self::validity) method, we instead store nulls in a validity mask.
+    pub(super) validity: Cow<Mask>,
 }
 
-impl NullVector {
-    /// Creates a new immutable vector of nulls with the given length.
+impl NullVectorMut {
+    /// Creates a new mutable vector of nulls with the given length.
     pub fn new(len: usize) -> Self {
         Self {
-            len,
-            validity: Mask::AllFalse(len),
+            validity: Cow::Mutable(MaskMut::new_false(len)),
         }
     }
 }
 
-impl VectorOps for NullVector {
-    type Mutable = NullVectorMut;
-
+impl VectorMutOps for NullVectorMut {
     fn len(&self) -> usize {
-        self.len
+        self.validity.len()
     }
 
-    fn validity(&self) -> &Mask {
+    fn validity(&self) -> &Cow<Mask> {
         &self.validity
     }
 
-    fn scalar_at(&self, index: usize) -> Scalar {
-        assert!(index < self.len, "Index out of bounds in `NullVector`");
-        NullScalar.into()
+    fn clear(&mut self) {
+        self.validity.clear()
     }
 
-    fn slice(&self, range: impl RangeBounds<usize> + Clone + Debug) -> Self {
-        let len = crate::vector_ops::range_bounds_to_len(range, self.len());
-        Self::new(len)
+    fn truncate(&mut self, len: usize) {
+        self.validity.truncate(len);
     }
 
-    fn try_into_mut(self) -> Result<NullVectorMut, Self> {
-        Ok(NullVectorMut::new(self.len))
+    fn split_off(&mut self, at: usize) -> Self {
+        // assert!(
+        //     at <= self.capacity(),
+        //     "split_off out of bounds: {:?} <= {:?}",
+        //     at,
+        //     self.capacity(),
+        // );
+        //
+        // let new_len = self.len.saturating_sub(at);
+        // self.len = std::cmp::min(self.len, at);
+        // NullVectorMut {
+        //     len: new_len,
+        //     validity: Cow::Mutable(MaskMut::new_false(new_len)),
+        // }
+        todo!()
     }
 
-    fn into_mut(self) -> NullVectorMut {
-        NullVectorMut::new(self.len)
+    fn unsplit(&mut self, other: Self) {
+        // TODO(ngates): in theory we don't need to into_mut to unsplit
+        self.validity
+            .ensure_mut()
+            .unsplit(other.validity.into_mut());
+    }
+
+    unsafe fn validity_mut(&mut self) -> &mut Cow<Mask> {
+        unsafe { &mut self.validity }
+    }
+
+    fn ensure_frozen(&mut self) {
+        todo!()
+    }
+
+    fn append_zeros(&mut self, n: usize) {
+        self.validity.ensure_mut().append_n(false, n);
+    }
+
+    fn append_nulls(&mut self, n: usize) {
+        self.validity.ensure_mut().append_n(false, n);
     }
 }
