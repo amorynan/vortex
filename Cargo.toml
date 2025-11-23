@@ -341,4 +341,3 @@ lto = false
 [profile.bench_assert]
 debug-assertions = true
 inherits = "bench"
-
