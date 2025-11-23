@@ -10,7 +10,6 @@ use datafusion_common::{DataFusionError, Result as DFResult};
 use datafusion_datasource::file_stream::{FileOpenFuture, FileOpener};
 use datafusion_datasource::schema_adapter::SchemaAdapterFactory;
 use datafusion_datasource::{FileRange, PartitionedFile, TableSchema};
-use datafusion_datasource::file_meta::FileMeta;
 use datafusion_physical_expr::simplifier::PhysicalExprSimplifier;
 use datafusion_physical_expr::{PhysicalExprRef, split_conjunction};
 use datafusion_physical_expr_adapter::PhysicalExprAdapterFactory;
@@ -141,7 +140,7 @@ fn compute_logical_file_schema(
 }
 
 impl FileOpener for VortexOpener {
-    fn open(&self, file_meta: FileMeta, file: PartitionedFile) -> DFResult<FileOpenFuture> {
+    fn open(&self, file: PartitionedFile) -> DFResult<FileOpenFuture> {
         let session = self.session.clone();
         let object_store = self.object_store.clone();
         let projection = self.projection.clone();
@@ -709,9 +708,8 @@ mod tests {
             file_pruning_predicate: None,
             expr_adapter_factory: Some(Arc::new(DefaultPhysicalExprAdapterFactory) as _),
             schema_adapter_factory: Arc::new(DefaultSchemaAdapterFactory),
-            partition_fields: vec![],
             file_cache: VortexFileCache::new(1, 1, SESSION.clone()),
-            logical_schema: table_schema.clone(),
+            table_schema: TableSchema::from_file_schema(table_schema.clone()),
             batch_size: 100,
             limit: None,
             metrics: Default::default(),
@@ -720,7 +718,7 @@ mod tests {
         };
 
         // The opener should successfully open the file and reorder columns
-        let stream = opener.open(make_meta(file_path, data_size), file)?.await?;
+        let stream = opener.open(file)?.await?;
 
         let format_opts = FormatOptions::new().with_types_info(true);
         let data = stream.try_collect::<Vec<_>>().await?;

@@ -135,7 +135,7 @@ impl FileSource for VortexSource {
 
         let projection = base_config.file_column_projection_indices().map(Arc::from);
 
-        let table_schema = base_config.file_schema.clone();
+        let table_schema = base_config.table_schema.clone();
 
         let opener = VortexOpener {
             session: self.session.clone(),
