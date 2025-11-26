@@ -73,6 +73,22 @@ impl BoolVector {
     pub fn bits(&self) -> &BitBuffer {
         &self.bits
     }
+
+    /// Gets a nullable element at the given index, panicking on out-of-bounds.
+    ///
+    /// If the element at the given index is null, returns `None`. Otherwise, returns `Some(x)`,
+    /// where `x: bool`.
+    ///
+    /// Note that this `get` method is different from the standard library [`slice::get`], which
+    /// returns `None` if the index is out of bounds. This method will panic if the index is out of
+    /// bounds, and return `None` if the element is null.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the index is out of bounds.
+    pub fn get(&self, index: usize) -> Option<bool> {
+        self.validity.value(index).then(|| self.bits.value(index))
+    }
 }
 
 impl VectorOps for BoolVector {
