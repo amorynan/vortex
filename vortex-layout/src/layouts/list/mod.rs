@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: Copyright the Vortex contributors
 
-mod reader;
+pub mod reader;
+pub mod writer;
 
-use std::ops::Deref;
 use std::sync::Arc;
 
 use vortex_array::ArrayContext;
@@ -11,7 +11,6 @@ use vortex_array::DeserializeMetadata;
 use vortex_array::ProstMetadata;
 use vortex_dtype::DType;
 use vortex_dtype::Nullability;
-use vortex_error::VortexExpect;
 use vortex_error::VortexResult;
 use vortex_error::vortex_bail;
 use vortex_error::vortex_ensure;
@@ -60,6 +59,9 @@ pub struct ListLayout {
 }
 
 use vortex_dtype::PType;
+use vortex_session::VortexSession;
+
+use crate::layouts::list::reader::ListReader;
 
 #[derive(prost::Message)]
 pub struct ListLayoutMetadata {
@@ -227,11 +229,47 @@ impl VTable for ListVTable {
     }
 
     fn new_reader(
-        layout: &Self::Layout,
+        layout: &ListLayout,
         name: Arc<str>,
         segment_source: Arc<dyn SegmentSource>,
+        session: &VortexSession,
     ) -> VortexResult<LayoutReaderRef> {
-        todo!()
+        match &*layout.inner {
+            l @ ListLayoutInner::List {
+                offsets,
+                elements,
+                validity,
+            } => {
+                let offsets_name: Arc<str> = format!("{name}.offsets").as_str().into();
+                let elements_name: Arc<str> = format!("{name}.elements").as_str().into();
+
+                let offsets_reader =
+                    offsets.new_reader(offsets_name, segment_source.clone(), session)?;
+
+                let elements_reader =
+                    elements.new_reader(elements_name, segment_source.clone(), session)?;
+
+                let validity_reader = validity
+                    .as_ref()
+                    .map(|v| {
+                        let validity_name: Arc<str> = format!("{name}.validity").as_str().into();
+
+                        v.new_reader(validity_name, segment_source.clone(), session)
+                    })
+                    .transpose()?;
+
+                Ok(Arc::new(ListReader::new(
+                    name,
+                    layout.clone(),
+                    offsets_reader,
+                    elements_reader,
+                    validity_reader,
+                )))
+            }
+            ListLayoutInner::FixedSizeList { .. } => {
+                todo!()
+            }
+        }
     }
 
     fn build(
@@ -250,6 +288,8 @@ impl VTable for ListVTable {
         );
 
         match dtype {
+            // We don't know what this means. We should just write the FixedSize elements together,
+            // and just make sure that the elements are always coalesced in units of XYZ size.
             DType::List(elem_type, nullability) => {
                 let (validity, next_child) = if nullability.is_nullable() {
                     (
