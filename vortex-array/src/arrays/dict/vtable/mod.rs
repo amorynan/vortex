@@ -26,6 +26,7 @@ mod array;
 mod canonical;
 mod encode;
 mod operations;
+mod to_arrow;
 mod validity;
 mod visitor;
 
