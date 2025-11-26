@@ -20,34 +20,37 @@ impl ToArrowKernel for DictVTable {
         array: &DictArray,
         arrow_type: Option<&DataType>,
     ) -> VortexResult<Option<ArrowArrayRef>> {
-        // IMPORTANT: When no target arrow_type is specified, return None to fall back to
-        // canonicalization. This avoids producing Arrow Dictionary<_, Utf8View> arrays which
-        // can cause issues when DataFusion's schema adapter tries to cast them to Utf8
-        // (StringArray). The canonical form (VarBinView -> Utf8View) is more portable and
-        // doesn't have these casting issues.
-        //
-        // See: https://github.com/vortex-data/vortex/pull/4254
-        let Some(arrow_type) = arrow_type else {
-            return Ok(None);
+        // Convert codes and values to their preferred Arrow representation
+        let (key_type, value_type) = match arrow_type {
+            // When a specific dictionary type is requested, use those types
+            Some(DataType::Dictionary(key_type, value_type)) => {
+                (key_type.as_ref().clone(), value_type.as_ref().clone())
+            }
+            // When no type is specified, emit dictionary with preferred types
+            None => {
+                let codes_arrow = array.codes().clone().into_arrow_preferred()?;
+                let values_arrow = array.values().clone().into_arrow_preferred()?;
+                (
+                    codes_arrow.data_type().clone(),
+                    values_arrow.data_type().clone(),
+                )
+            }
+            // For non-dictionary target types, fall back to canonicalization
+            Some(_) => return Ok(None),
         };
 
-        // Only handle Dictionary types explicitly. For all other types, fall back to
-        // canonicalization which will produce the appropriate canonical form.
-        let DataType::Dictionary(key_type, value_type) = arrow_type else {
-            return Ok(None);
-        };
+        // Convert codes to the key type
+        let codes_arrow = array.codes().clone().into_arrow(&key_type)?;
 
-        // Convert codes to the requested key type
-        let codes_arrow = array.codes().clone().into_arrow(key_type.as_ref())?;
-
-        // Convert values to the requested value type
-        let values_arrow = array.values().clone().into_arrow(value_type.as_ref())?;
+        // Convert values to the value type
+        let values_arrow = array.values().clone().into_arrow(&value_type)?;
 
         // Build the Arrow dictionary array
         let codes_data = codes_arrow.to_data();
+        let dict_type = DataType::Dictionary(Box::new(key_type), Box::new(value_type));
 
         // Create the dictionary array data
-        let array_data = ArrayDataBuilder::new(arrow_type.clone())
+        let array_data = ArrayDataBuilder::new(dict_type)
             .len(array.len())
             .buffers(codes_data.buffers().to_vec())
             .nulls(codes_data.nulls().cloned())
@@ -73,18 +76,23 @@ mod tests {
     use crate::arrow::compute::to_arrow::to_arrow_preferred;
 
     #[test]
-    fn test_dict_to_arrow_preferred_canonicalizes() {
+    fn test_dict_to_arrow_preferred_produces_dictionary() {
         // Create a dict-encoded string array
         let values = VarBinViewArray::from_iter_str(["hello", "world"]);
         let codes = buffer![0u32, 1, 0, 1, 0].into_array();
         let dict = DictArray::new(codes, values.into_array());
 
-        // When no target type is specified, it should fall back to canonicalization
-        // and produce Utf8View (not Dictionary<_, Utf8View>)
+        // When no target type is specified, it should produce a Dictionary array
+        // with the preferred value type (Utf8View for strings)
         let arrow = to_arrow_preferred(dict.as_ref()).unwrap();
 
-        // The result should be Utf8View, NOT a Dictionary
-        assert_eq!(arrow.data_type(), &DataType::Utf8View);
+        // The result should be Dictionary<_, Utf8View>
+        match arrow.data_type() {
+            DataType::Dictionary(_, value_type) => {
+                assert_eq!(value_type.as_ref(), &DataType::Utf8View);
+            }
+            other => panic!("Expected Dictionary type, got {:?}", other),
+        }
         assert_eq!(arrow.len(), 5);
     }
 
@@ -96,10 +104,8 @@ mod tests {
         let dict = DictArray::new(codes, values.into_array());
 
         // When explicitly requesting Dictionary type, it should produce one
-        let dict_type = DataType::Dictionary(
-            Box::new(DataType::UInt32),
-            Box::new(DataType::Utf8View),
-        );
+        let dict_type =
+            DataType::Dictionary(Box::new(DataType::UInt32), Box::new(DataType::Utf8View));
         let arrow = to_arrow(dict.as_ref(), &dict_type).unwrap();
 
         // The result should be a Dictionary

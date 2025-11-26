@@ -366,12 +366,28 @@ impl FileOpener for VortexOpener {
                 scan_builder = scan_builder.with_limit(limit);
             }
 
+            // Clone the schema for use in the conversion closure
+            let conversion_schema = projected_physical_schema.clone();
+
             let stream = scan_builder
                 .with_metrics(metrics)
                 .with_projection(projection_expr)
                 .with_some_filter(filter)
                 .with_ordered(has_output_ordering)
-                .map(|chunk| RecordBatch::try_from(chunk.as_ref()))
+                .map(move |chunk| {
+                    // Convert to Arrow using the target schema to ensure correct type conversion.
+                    // This is important because `to_arrow_preferred()` might produce types
+                    // (like Dictionary<_, Utf8View>) that the schema adapter cannot cast.
+                    // By specifying the target schema, we ensure that dict-encoded arrays
+                    // are canonicalized to the expected type.
+                    use vortex::Canonical;
+                    let Canonical::Struct(struct_array) = chunk.to_canonical() else {
+                        return Err(vortex::error::vortex_err!(
+                            "RecordBatch can only be constructed from a struct array"
+                        ));
+                    };
+                    struct_array.into_record_batch_with_schema(&conversion_schema)
+                })
                 .into_stream()
                 .map_err(|e| {
                     DataFusionError::Execution(format!("Failed to create Vortex stream: {e}"))
@@ -867,6 +883,107 @@ mod tests {
 
         assert_eq!(data.len(), 1);
         assert_eq!(data[0].num_rows(), 3);
+
+        Ok(())
+    }
+
+    /// Helper to write a Vortex array directly (not converted from Arrow) to a file.
+    async fn write_vortex_array_to_file(
+        object_store: Arc<dyn ObjectStore>,
+        path: &str,
+        array: vortex::ArrayRef,
+    ) -> anyhow::Result<u64> {
+        let path = Path::parse(path)?;
+
+        let mut write = ObjectStoreWriter::new(object_store, &path).await?;
+        let summary = SESSION
+            .write_options()
+            .write(&mut write, array.to_array_stream())
+            .await?;
+        write.shutdown().await?;
+
+        Ok(summary.size())
+    }
+
+    /// This test reproduces the TPCH utf8view encoding issue from PR #4254.
+    ///
+    /// When a Vortex file contains dict-encoded strings:
+    /// 1. The DictVTable's ToArrowKernel produces Dictionary<Int32, Utf8View>
+    /// 2. The schema adapter tries to cast this to Utf8 (the logical schema type)
+    /// 3. Arrow's cast fails: "Cannot cast Utf8View to StringArray of expected type"
+    ///
+    /// This test demonstrates the issue by writing a file with dict-encoded strings
+    /// and reading it through the opener with a schema expecting Utf8.
+    #[tokio::test]
+    async fn test_dict_utf8view_to_utf8_schema_cast_issue() -> anyhow::Result<()> {
+        use vortex::IntoArray;
+        use vortex::arrays::DictArray;
+        use vortex::arrays::StructArray;
+        use vortex::arrays::VarBinViewArray;
+        use vortex::buffer::buffer;
+        use vortex::validity::Validity;
+
+        let object_store = Arc::new(InMemory::new()) as Arc<dyn ObjectStore>;
+        let file_path = "/path/dict_strings.vortex";
+
+        // Create a dict-encoded string column
+        let values = VarBinViewArray::from_iter_str(["hello", "world", "test"]);
+        let codes = buffer![0u32, 1, 2, 0, 1].into_array();
+        let dict_strings = DictArray::new(codes, values.into_array()).into_array();
+
+        // Wrap in a struct for the file
+        let struct_array = StructArray::try_new(
+            ["name"].into(),
+            vec![dict_strings],
+            5,
+            Validity::NonNullable,
+        )?;
+
+        let data_size =
+            write_vortex_array_to_file(object_store.clone(), file_path, struct_array.into_array())
+                .await?;
+
+        // Table schema expects Utf8View (which is what TPCH schema actually specifies)
+        // Vortex's DType::Utf8 maps to Arrow's DataType::Utf8View
+        let table_schema = Arc::new(Schema::new(vec![Field::new(
+            "name",
+            DataType::Utf8View,
+            true,
+        )]));
+
+        let opener = VortexOpener {
+            session: SESSION.clone(),
+            object_store: object_store.clone(),
+            projection: Some([0].into()),
+            filter: None,
+            file_pruning_predicate: None,
+            expr_adapter_factory: Some(Arc::new(DefaultPhysicalExprAdapterFactory) as _),
+            schema_adapter_factory: Arc::new(DefaultSchemaAdapterFactory),
+            partition_fields: vec![],
+            file_cache: VortexFileCache::new(1, 1, SESSION.clone()),
+            logical_schema: table_schema.clone(),
+            batch_size: 100,
+            limit: None,
+            metrics: Default::default(),
+            layout_readers: Default::default(),
+            has_output_ordering: false,
+        };
+
+        let stream = opener
+            .open(
+                make_meta(file_path, data_size),
+                PartitionedFile::new(file_path.to_string(), data_size),
+            )?
+            .await?;
+
+        // With the fix in place (using into_record_batch_with_schema instead of try_from),
+        // dict-encoded arrays should be properly canonicalized to the target type.
+        let data = stream.try_collect::<Vec<_>>().await?;
+
+        assert_eq!(data.len(), 1);
+        assert_eq!(data[0].num_rows(), 5);
+        // The data should be Utf8View as expected by the schema
+        assert_eq!(data[0].schema().field(0).data_type(), &DataType::Utf8View);
 
         Ok(())
     }
